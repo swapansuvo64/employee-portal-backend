@@ -2,7 +2,9 @@ const pool = require('../dbConfig/db');
 
 class NewsUpdate {
   static async create({ urls, createdBy, body, title }) {
+    console.log("uid:"+ createdBy,body)
     const [result] = await pool.execute(
+      
       'INSERT INTO news_update (urls, createdBy, body, title) VALUES (?, ?, ?, ?)',
       [urls, createdBy, body, title]
     );
@@ -33,10 +35,10 @@ class NewsUpdate {
     return this.getById(id);
   }
 
-  static async delete(id, createdBy) {
+  static async delete(id) {
     const [result] = await pool.execute(
-      'DELETE FROM news_update WHERE id = ? AND createdBy = ?',
-      [id, createdBy]
+      'DELETE FROM news_update WHERE id = ? ',
+      [id]
     );
     return result.affectedRows > 0;
   }

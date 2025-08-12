@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const insightController = require('../controller/insight');
+const insightController = require('../controllers/insight');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Create an insight
-router.post('/',  authMiddleware.authenticate, insightController.createInsight);
+router.post('/:userId',  authMiddleware.authenticate, insightController.createInsight);
 
 // Get all insights
 router.get('/',  authMiddleware.authenticate,insightController.getAllInsights);

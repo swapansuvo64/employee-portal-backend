@@ -5,10 +5,19 @@ const authRoutes = require('./routes/authRoutes');
 const profileRouter = require('./routes/profile');
 const fileUploadRoutes = require('./routes/fileUploadRoutes');
 const NewsUpdateController = require('./routes/newsUpdateRoutes');
+const InsightController =require('./routes/insight');
+const leave=require('./routes/leaveform')
+const Complaint=require('./routes/Complaint')
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "*", // Allow all origins
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Routes
@@ -16,6 +25,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRouter);
 app.use('/api/files', fileUploadRoutes);
 app.use('/api/news', NewsUpdateController);
+app.use('/api/insight',InsightController);
+app.use('/api/leave',leave);
+app.use('/api/complaint',Complaint);
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({ 

@@ -10,7 +10,7 @@ router.post('/',
 );
 
 // Get all news updates (public)
-router.get('/', NewsUpdateController.getAll);
+router.get('/',authMiddleware.authenticate, NewsUpdateController.getAll);
 
 // Get user's news updates (authenticated)
 router.get('/my-news',

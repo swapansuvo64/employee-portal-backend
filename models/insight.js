@@ -1,17 +1,34 @@
 const pool = require('../dbConfig/db');
 
 class Insight {
-  static async create({ urls, tags, createdBy, body, title }) {
-    const [result] = await pool.execute(
-      'INSERT INTO insight (urls, tags, createdBy, body, title) VALUES (?, ?, ?, ?, ?)',
-      [urls, tags, createdBy, body, title]
-    );
-    return this.getById(result.insertId);
+static async create({ urls, tags, createdBy, body, title }) {
+
+  const [existing] = await pool.execute(
+    `SELECT id 
+     FROM insights_update 
+     WHERE urls = ? AND tags = ? AND createdBy = ? AND body = ? AND title = ?`,
+    [urls, tags, createdBy, body, title]
+  );
+
+  // 2. If found, just return that record
+  if (existing.length > 0) {
+    return this.getById(existing[0].id);
   }
+
+  // 3. If not found, insert the new record
+  const [result] = await pool.execute(
+    `INSERT INTO insights_update (urls, tags, createdBy, body, title)
+     VALUES (?, ?, ?, ?, ?)`,
+    [urls, tags, createdBy, body, title]
+  );
+
+  return this.getById(result.insertId);
+}
+
 
   static async getById(id) {
     const [rows] = await pool.execute(
-      'SELECT * FROM insight WHERE id = ?',
+      'SELECT * FROM insights_update WHERE id = ?',
       [id]
     );
     return rows[0];
@@ -19,7 +36,7 @@ class Insight {
 
   static async getByUser(createdBy) {
     const [rows] = await pool.execute(
-      'SELECT * FROM insight WHERE createdBy = ? ORDER BY created_at DESC',
+      'SELECT * FROM insights_update WHERE createdBy = ? ORDER BY created_at DESC',
       [createdBy]
     );
     return rows;
@@ -27,16 +44,16 @@ class Insight {
 
   static async update(id, createdBy, { urls, tags, body, title }) {
     await pool.execute(
-      'UPDATE insight SET urls = ?, tags = ?, body = ?, title = ? WHERE id = ? AND createdBy = ?',
+      'UPDATE insights_update SET urls = ?, tags = ?, body = ?, title = ? WHERE id = ? AND createdBy = ?',
       [urls, tags, body, title, id, createdBy]
     );
     return this.getById(id);
   }
 
-  static async delete(id, createdBy) {
+  static async delete(id) {
     const [result] = await pool.execute(
-      'DELETE FROM insight WHERE id = ? AND createdBy = ?',
-      [id, createdBy]
+      'DELETE FROM insights_update WHERE id = ?',
+      [id]
     );
     return result.affectedRows > 0;
   }
@@ -65,7 +82,7 @@ class Insight {
         p.bio,
         p.joindate,
         p.manager
-      FROM insight i
+      FROM insights_update i
       JOIN profile p ON i.createdBy = p.uid
       ORDER BY i.created_at DESC
     `);

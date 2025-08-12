@@ -1,11 +1,12 @@
-const Insight = require('../model/insight');
-
+const Insight = require('../models/insight');
+const pool = require('../dbConfig/db'); 
 const insightController = {
   createInsight: async (req, res) => {
     try {
+       const { userId } = req.params;
       const { urls, tags, body, title } = req.body;
-      const createdBy = req.user.uid;
-      const insight = await Insight.create({ urls, tags, createdBy, body, title });
+     // const createdBy = req.user.uid;
+      const insight = await Insight.create({ urls, tags, createdBy: userId, body, title });
       res.status(201).json(insight);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -45,8 +46,8 @@ const insightController = {
   updateInsight: async (req, res) => {
     try {
       const { id } = req.params;
-      const { urls, tags, body, title } = req.body;
-      const createdBy = req.user.uid;
+      const { urls, tags, body, title,createdBy } = req.body;
+      //const createdBy = req.user.uid;
       const insight = await Insight.update(id, createdBy, { urls, tags, body, title });
       res.json(insight);
     } catch (error) {
@@ -57,8 +58,8 @@ const insightController = {
   deleteInsight: async (req, res) => {
     try {
       const { id } = req.params;
-      const createdBy = req.user.uid;
-      const success = await Insight.delete(id, createdBy);
+      //const createdBy = req.user.uid;
+      const success = await Insight.delete(id);
       if (!success) {
         return res.status(404).json({ message: 'Insight not found or not authorized' });
       }

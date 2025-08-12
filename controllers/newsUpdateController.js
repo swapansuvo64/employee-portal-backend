@@ -1,26 +1,55 @@
 const NewsUpdate = require('../models/NewsUpdate');
 const authMiddleware = require('../middleware/authMiddleware');
-
+const { Op } = require('sequelize');
+const pool = require('../dbConfig/db'); // Add this line
+let i=0
 class NewsUpdateController {
-  static async create(req, res) {
-    try {
-      const { urls, body, title } = req.body;
-      const createdBy = req.user.id; // From auth middleware
+static async create(req, res) {
+  console.log('Request received:', {
+    body: req.body,
+    time: new Date().toISOString()
+  });
 
-      const newsItem = await NewsUpdate.create({ urls, createdBy, body, title });
-      
-      res.status(201).json({
+  try {
+    const { title, body, urls, createdBy } = req.body;
+
+    // 1. Check for duplicates within the last 5 seconds
+    const [existing] = await pool.execute(
+      `SELECT * FROM news_update 
+       WHERE title = ? AND body = ? AND createdBy = ? 
+       AND created_at > DATE_SUB(NOW(), INTERVAL 5 SECOND)`,
+      [title, body, createdBy]
+    );
+
+    if (existing.length > 0) {
+      console.log('Duplicate detected, skipping creation silently.');
+      return res.status(200).json({
         success: true,
-        data: newsItem
-      });
-    } catch (error) {
-      console.error('Error creating news update:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to create news update'
+        data: existing[0] // return existing item to keep frontend happy
       });
     }
+
+    // 2. Create the news item
+    const newsItem = await NewsUpdate.create({
+      urls,
+      createdBy,
+      body,
+      title
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: newsItem
+    });
+  } catch (error) {
+    console.error('Creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create news update'
+    });
   }
+}
+
 
   static async getByUser(req, res) {
     try {
@@ -43,8 +72,8 @@ class NewsUpdateController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const createdBy = req.user.id;
-      const { urls, body, title } = req.body;
+     // const createdBy = req.user.id;
+      const { urls, body, title,createdBy } = req.body;
 
       const updatedItem = await NewsUpdate.update(id, createdBy, { urls, body, title });
       
@@ -71,9 +100,9 @@ class NewsUpdateController {
   static async delete(req, res) {
     try {
       const { id } = req.params;
-      const createdBy = req.user.id;
+      //const createdBy = req.user.id;
 
-      const deleted = await NewsUpdate.delete(id, createdBy);
+      const deleted = await NewsUpdate.delete(id);
       
       if (!deleted) {
         return res.status(404).json({
