@@ -64,6 +64,44 @@ static async createUser(name, password, role) {
   return { id: result.insertId, uid };
 }
 
+static async deleteUser(uid) {
+  const connectionAuth = await authPool.getConnection();
+  const connectionMain = await pool.getConnection();
+
+  try {
+    // Begin transactions in both DBs
+    await connectionAuth.beginTransaction();
+    await connectionMain.beginTransaction();
+
+    // 1️⃣ Delete from Profile table (main DB)
+    await connectionMain.execute(
+      'DELETE FROM profile WHERE uid = ?',
+      [uid]
+    );
+
+    // 2️⃣ Delete from User table (auth DB)
+    await connectionAuth.execute(
+      'DELETE FROM User WHERE uid = ?',
+      [uid]
+    );
+
+    // Commit both
+    await connectionAuth.commit();
+    await connectionMain.commit();
+
+    return { success: true, message: 'User deleted successfully' };
+  } catch (err) {
+    // Rollback both if error
+    await connectionAuth.rollback();
+    await connectionMain.rollback();
+    throw err;
+  } finally {
+    // Release connections
+    connectionAuth.release();
+    connectionMain.release();
+  }
+}
+
 
   static async findUserByName(name) {
     const [rows] = await authPool.execute('SELECT * FROM User WHERE name = ?', [name]);

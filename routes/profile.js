@@ -28,6 +28,9 @@ router.delete('/:uid/work-schedule/:id',
   ProfileController.deleteWorkSchedule
 );
 
+router.post('/work-schedule/:uid', authMiddleware.authenticate, ProfileController.createWorkSchedule);
+
+
 
 
 

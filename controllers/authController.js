@@ -1,9 +1,11 @@
 const User = require('../models/User');
 const pool = require('../dbConfig/db');
+const authPool=require('../dbConfig/authdDb')
 const authController = {
   async signup(req, res) {
     try {
       const { name, password, role } = req.body;
+      console.log(req.body)
       
       if (!name || !password || !role) {
         return res.status(400).json({ 
@@ -143,6 +145,41 @@ async login(req, res) {
         success: false,
         message: 'Internal server error' 
       });
+    }
+  },
+
+   async deleteUser(req, res) {
+    const { uid } = req.params;
+
+    if (!uid) {
+      return res.status(400).json({ success: false, message: 'UID is required' });
+    }
+
+    const connectionAuth = await authPool.getConnection();
+    const connectionMain = await pool.getConnection();
+
+    try {
+      await connectionAuth.beginTransaction();
+      await connectionMain.beginTransaction();
+
+      // Delete from Profile table
+      await connectionMain.execute('DELETE FROM profile WHERE uid = ?', [uid]);
+
+      // Delete from User table
+      await connectionAuth.execute('DELETE FROM User WHERE uid = ?', [uid]);
+
+      await connectionAuth.commit();
+      await connectionMain.commit();
+
+      res.json({ success: true, message: 'User deleted successfully' });
+    } catch (err) {
+      await connectionAuth.rollback();
+      await connectionMain.rollback();
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Error deleting user', error: err.message });
+    } finally {
+      connectionAuth.release();
+      connectionMain.release();
     }
   }
 };

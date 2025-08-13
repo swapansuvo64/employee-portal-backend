@@ -31,6 +31,7 @@ class ProfileController {
   static async getAllProfiles(req, res) {
     try {
       const profiles = await Profile.getAll();
+     // console.log(profiles)
       res.json({
         success: true,
         data: profiles
@@ -162,6 +163,18 @@ static async deleteWorkSchedule(req, res) {
     });
   }
 }
+
+static async createWorkSchedule  (req, res)  {
+  try {
+    const { uid } = req.params; 
+    const schedule = await Profile.createWorkSchedule(uid, req.body);
+    res.status(201).json({ success: true, data: schedule });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+
 }
 
 module.exports = ProfileController;

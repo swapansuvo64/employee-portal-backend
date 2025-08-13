@@ -33,10 +33,53 @@ class Profile {
     return profileData;
   }
 
-  static async getAll() {
-    const [rows] = await pool.execute('SELECT * FROM profile');
-    return rows;
+static async getAll() {
+  const [rows] = await pool.execute(`
+    SELECT p.*, ws.id AS ws_id, ws.days, ws.start_day_name, ws.end_day_name, ws.start_time, ws.end_time
+    FROM profile p
+    LEFT JOIN work_schedule ws ON p.uid = ws.uid
+  `);
+
+  const profilesMap = new Map();
+
+  for (const row of rows) {
+    if (!profilesMap.has(row.uid)) {
+      profilesMap.set(row.uid, {
+        uid: row.uid,
+        firstname: row.firstname,
+        lastname: row.lastname,
+        email: row.email,
+        department: row.department,
+        designation: row.designation,
+        username: row.username,
+        role: row.role,
+        status: row.status,
+        profilepicurl: row.profilepicurl,
+        joindate: row.joindate,
+        location: row.location,
+        manager: row.manager,
+        phonno: row.phonno,
+        bio: row.bio,
+        updated_at: row.updated_at,
+        work_schedules: []
+      });
+    }
+
+    if (row.ws_id) {
+      profilesMap.get(row.uid).work_schedules.push({
+        id: row.ws_id,
+        days: row.days,
+        start_day_name: row.start_day_name,
+        end_day_name: row.end_day_name,
+        start_time: row.start_time,
+        end_time: row.end_time
+      });
+    }
   }
+
+  return Array.from(profilesMap.values());
+}
+
 
   static async update(uid, updateData) {
     
@@ -132,7 +175,7 @@ class Profile {
   static async updateWorkSchedule(id, uid, updateData) {
   const connection = await pool.getConnection();
   await connection.beginTransaction();
-
+console.log(id,uid)
   try {
     // Verify the schedule exists and belongs to the user
     const [existing] = await connection.execute(
@@ -220,6 +263,30 @@ static async getWorkScheduleById(id, uid) {
   );
   return rows[0] || null;
 }
+
+ static async createWorkSchedule(uid, data) {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      const { days, start_day_name, end_day_name, start_time, end_time } = data;
+
+      const [result] = await connection.execute(
+        `INSERT INTO work_schedule (uid, days, start_day_name, end_day_name, start_time, end_time) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [uid, days, start_day_name, end_day_name, start_time, end_time]
+      );
+
+      await connection.commit();
+      return await this.getWorkScheduleById(result.insertId, uid);
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
 }
+
 
 module.exports = Profile;
