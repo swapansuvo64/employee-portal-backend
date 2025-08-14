@@ -9,6 +9,8 @@ const InsightController =require('./routes/insight');
 const leave=require('./routes/leaveform')
 const Complaint=require('./routes/Complaint')
 const Team=require('./routes/team')
+const Client=require('./routes/client')
+const Project =require('./routes/project')
 const app = express();
 
 // Middleware
@@ -30,6 +32,8 @@ app.use('/api/insight',InsightController);
 app.use('/api/leave',leave);
 app.use('/api/complaint',Complaint);
 app.use('/api/teams',Team)
+app.use('/api/client',Client)
+app.use('/api/projets',Project)
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({ 
