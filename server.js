@@ -11,6 +11,7 @@ const Complaint=require('./routes/Complaint')
 const Team=require('./routes/team')
 const Client=require('./routes/client')
 const Project =require('./routes/project')
+const ProgessAgent=require('./routes/progressAgent')
 const app = express();
 
 // Middleware
@@ -34,6 +35,7 @@ app.use('/api/complaint',Complaint);
 app.use('/api/teams',Team)
 app.use('/api/client',Client)
 app.use('/api/projets',Project)
+app.use('/api/progress',ProgessAgent)
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({ 
