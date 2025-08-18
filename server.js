@@ -12,6 +12,9 @@ const Team=require('./routes/team')
 const Client=require('./routes/client')
 const Project =require('./routes/project')
 const ProgessAgent=require('./routes/progressAgent')
+const Assignment=require('./routes/assignment/assignment')
+const Comment=require('./routes/assignment/comment')
+const Issue =require('./routes/assignment/issue')
 const app = express();
 
 // Middleware
@@ -36,6 +39,10 @@ app.use('/api/teams',Team)
 app.use('/api/client',Client)
 app.use('/api/projets',Project)
 app.use('/api/progress',ProgessAgent)
+app.use('/api/assignment',Assignment)
+app.use('/api/comment',Comment)
+app.use('/api/issue',Issue)
+
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({ 
