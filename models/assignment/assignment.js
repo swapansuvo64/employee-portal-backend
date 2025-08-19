@@ -28,7 +28,7 @@ const Assignment = {
   getAll: async () => {
     
     const [rows] = await db.query("SELECT * FROM assignment");
-    console.log(rows)
+  //  console.log(rows)
     return rows;
   },
 
@@ -38,30 +38,27 @@ const Assignment = {
   },
 
   update: async (id, data) => {
-    const sql = `
-      UPDATE assignment SET 
-      assignedPerson=?, task=?, startDate=?, endDate=?, isCompleted=?, comment=?, 
-      commentUserId=?, issue=?, issueUserId=?, projectId=?, urls=?, status=?, createdBy=? 
-      WHERE id=?
-    `;
-    const [result] = await db.query(sql, [
-      data.assignedPerson,
-      data.task,
-      data.startDate,
-      data.endDate,
-      data.isCompleted,
-      data.comment,
-      data.commentUserId,
-      data.issue,
-      data.issueUserId,
-      data.projectId,
-      data.urls,
-      data.status,
-      data.createdBy,
-      id
-    ]);
+    const fields = [];
+    const values = [];
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        fields.push(`${key}=?`);
+        values.push(value);
+      }
+    }
+
+    if (fields.length === 0) {
+      return { affectedRows: 0 }; // Return empty result if nothing to update
+    }
+
+    const sql = `UPDATE assignment SET ${fields.join(", ")} WHERE id=?`;
+    values.push(id);
+
+    const [result] = await db.query(sql, values);
     return result;
   },
+
 
   delete: async (id) => {
     const [result] = await db.query("DELETE FROM assignment WHERE id = ?", [id]);

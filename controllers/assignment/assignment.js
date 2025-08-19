@@ -10,7 +10,7 @@ const AssignmentController = {
 
 getAll: async (req, res) => {
   try {
-    console.log("called");
+    //console.log("called");
     const results = await Assignment.getAll();  // ✅ now using async/await
     res.json(results);
   } catch (err) {
@@ -28,11 +28,17 @@ getAll: async (req, res) => {
     });
   },
 
-  update: (req, res) => {
-    Assignment.update(req.params.id, req.body, (err) => {
-      if (err) return res.status(500).json({ error: err });
-      res.json({ message: "Assignment updated successfully" });
-    });
+update: async (req, res) => {
+    try {
+      const result = await Assignment.update(req.params.id, req.body);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      res.json({ message: "Assignment updated successfully", id: req.params.id });
+    } catch (err) {
+      console.error('Update error:', err);
+      res.status(500).json({ error: err.message });
+    }
   },
 
   delete: (req, res) => {

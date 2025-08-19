@@ -5,7 +5,7 @@ class ProfileController {
   static async getProfile(req, res) {
     try {
       const { uid } = req.params;
-      console.log('Fetching profile for UID:', uid);
+     // console.log('Fetching profile for UID:', uid);
       const profile = await Profile.getByUid(uid);
       
       if (!profile) {
