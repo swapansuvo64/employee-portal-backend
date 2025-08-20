@@ -102,14 +102,110 @@ const Project = {
         }
     },
 
-    getById: async (id) => {
-        try {
-            const [rows] = await db.query('SELECT * FROM projects WHERE id = ?', [id]);
-            return rows[0] || null;
-        } catch (error) {
-            throw error;
+getById: async (id) => {
+    try {
+        
+        const projectQuery = `
+            SELECT 
+                p.*,
+                c.id AS client_id,
+                c.name AS client_name,
+                c.client_name AS client_Company_name,
+                c.urls AS client_urls,
+                c.description AS client_description,
+                c.companyType AS client_company_type,
+                t.id AS team_id,
+                t.team_name,
+                t.manager AS team_manager_uid,
+                t.team_lead AS team_lead_uid,
+                t.team_member
+            FROM 
+                projects p
+            LEFT JOIN 
+                clients c ON p.clients = c.id
+            LEFT JOIN 
+                teams t ON p.assigned_team = t.id
+            WHERE 
+                p.id = ?
+        `;
+
+        const [projects] = await db.query(projectQuery, [id]);
+
+        if (projects.length === 0) {
+            return null; // No project found
         }
-    },
+
+        const project = projects[0];
+
+        if (!project.assigned_team) {
+            return {
+                ...project,
+                team_members: [],
+                team_manager: null,
+                team_lead: null
+            };
+        }
+
+        // Collect all UIDs we need to fetch (manager, lead, and members)
+        const uidsToFetch = [];
+        
+        if (project.team_manager_uid) {
+            uidsToFetch.push(project.team_manager_uid);
+        }
+        if (project.team_lead_uid) {
+            uidsToFetch.push(project.team_lead_uid);
+        }
+        if (project.team_member) {
+            uidsToFetch.push(...project.team_member.split(','));
+        }
+
+        const uniqueUids = [...new Set(uidsToFetch)];
+
+        let profiles = [];
+        if (uniqueUids.length > 0) {
+            const placeholders = uniqueUids.map(() => '?').join(',');
+            const memberQuery = `
+                SELECT 
+                    uid, username, firstname, lastname, profilepicurl,
+                    role, designation, email, phonno, department
+                FROM 
+                    profile
+                WHERE 
+                    uid IN (${placeholders})
+            `;
+
+            const [profileRows] = await db.query(memberQuery, uniqueUids);
+            profiles = profileRows;
+        }
+
+        const profileMap = profiles.reduce((map, profile) => {
+            map[profile.uid] = profile;
+            return map;
+        }, {});
+
+        const teamMembers = project.team_member 
+            ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
+            : [];
+
+        const teamManager = project.team_manager_uid 
+            ? profileMap[project.team_manager_uid]
+            : null;
+
+        const teamLead = project.team_lead_uid 
+            ? profileMap[project.team_lead_uid]
+            : null;
+
+        return {
+            ...project,
+            team_members: teamMembers,
+            team_manager: teamManager,
+            team_lead: teamLead
+        };
+    } catch (error) {
+        throw error;
+    }
+},
+
 
     create: async (data) => {
         const query = `

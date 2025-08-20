@@ -63,7 +63,47 @@ const Assignment = {
   delete: async (id) => {
     const [result] = await db.query("DELETE FROM assignment WHERE id = ?", [id]);
     return result;
-  }
+  },
+
+
+
+  //-------------------------------------------------------------------------------
+
+  getByAssignedPerson: async (assignedPersonId) => {
+    const [rows] = await db.query("SELECT * FROM assignment WHERE assignedPerson = ?", [assignedPersonId]);
+    return rows;
+  },
+  // NEW: Update assignments by assignedPerson
+  updateByAssignedPerson: async (assignedPersonId, data) => {
+    const fields = [];
+    const values = [];
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        fields.push(`${key}=?`);
+        values.push(value);
+      }
+    }
+
+    if (fields.length === 0) {
+      return { affectedRows: 0 }; // Return empty result if nothing to update
+    }
+
+    const sql = `UPDATE assignment SET ${fields.join(", ")} WHERE assignedPerson=?`;
+    values.push(assignedPersonId);
+
+    const [result] = await db.query(sql, values);
+    return result;
+  },
+
+  //---------------------------------------------------------------------------------
+   getByProjectId: async (projectId) => {
+    const [rows] = await db.query("SELECT * FROM assignment WHERE projectId = ?", [projectId]);
+    return rows;
+  },
+
+
+
 };
 
 module.exports = Assignment;

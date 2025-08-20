@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-
-const MISTRAL_API_KEY = "kLD0f73qeVr6vGjvPfnhM6jcNGpFu5kO";
+require('dotenv').config();
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 
 router.post('/', async (req, res) => {
@@ -75,6 +75,62 @@ Milestones:
         console.error("Error generating milestones:", error);
         res.status(500).json({
             error: "Failed to generate milestones",
+            details: error.message
+        });
+    }
+});
+
+
+
+router.post('/help-write-description', async (req, res) => {
+    try {
+        const { initialDescription,task } = req.body;
+
+        if (!task) {
+            return res.status(400).json({ error: "Initial task is required" });
+        }
+
+        const prompt = `
+The user needs help writing a concise project description of atleast 30 words. 
+Please refine and condense their input into a clear, professional project description.
+User Task:"${task}",
+User's input: "${initialDescription}"
+
+Create a concise project description (around 30 words) that clearly explains what needs to be done:
+        `;
+
+        const response = await axios.post(
+            MISTRAL_API_URL,
+            {
+                model: "mistral-tiny",
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 100
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${MISTRAL_API_KEY}`
+                }
+            }
+        );
+
+        const refinedDescription = response.data.choices[0].message.content.trim();
+        
+        res.json({ 
+            refinedDescription,
+            wordCount: refinedDescription.split(/\s+/).length
+        });
+
+    } catch (error) {
+        console.error("Error refining description:", error);
+        res.status(500).json({
+            error: "Failed to refine description",
             details: error.message
         });
     }

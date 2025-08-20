@@ -46,7 +46,45 @@ update: async (req, res) => {
       if (err) return res.status(500).json({ error: err });
       res.json({ message: "Assignment deleted successfully" });
     });
-  }
+  },
+
+  //---------------------------------------------------------------------------------------------
+  getAssignmentsByAssignedPerson: async (req, res) => {
+    try {
+      const assignments = await Assignment.getByAssignedPerson(req.params.assignedPersonId);
+      if (assignments.length === 0) {
+        return res.status(404).json({ message: 'No assignments found for this user' });
+      }
+      res.status(200).json(assignments);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+  
+  updateAssignmentsByAssignedPerson: async (req, res) => {
+    try {
+      const result = await Assignment.updateByAssignedPerson(req.params.assignedPersonId, req.body);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'No assignments found for this user' });
+      }
+      res.status(200).json({ message: 'Assignments updated successfully', affectedRows: result.affectedRows });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+  //----------------------------------------------------------------------------------------
+getAssignmentsByProjectId: async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const assignments = await Assignment.getByProjectId(projectId);
+      
+      res.json(assignments);
+    } catch (error) {
+      console.error('Error fetching assignments by project:', error);
+      res.status(500).json({ error: 'Failed to fetch assignments for this project' });
+    }
+  },
+
 };
 
 module.exports = AssignmentController;
