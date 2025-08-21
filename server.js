@@ -15,6 +15,8 @@ const ProgessAgent=require('./routes/progressAgent')
 const Assignment=require('./routes/assignment/assignment')
 const Comment=require('./routes/assignment/comment')
 const Issue =require('./routes/assignment/issue')
+const file =require('./routes/ClientOps/filesRoutes')
+const CommunicationLog=require('./routes/ClientOps/communicationLogRoutes')
 const app = express();
 
 // Middleware
@@ -42,6 +44,8 @@ app.use('/api/progress',ProgessAgent)
 app.use('/api/assignment',Assignment)
 app.use('/api/comment',Comment)
 app.use('/api/issue',Issue)
+app.use('/api/file',file)
+app.use('/api/CommunicationLog',CommunicationLog)
 
 // Health check endpoint
 app.get('/', (req, res) => {

@@ -20,7 +20,8 @@ const Assignment = {
       data.projectId,
       data.urls,
       data.status,
-      data.createdBy
+      data.createdBy,
+      // data.isPrintProject
     ]);
     return result;
   },

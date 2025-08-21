@@ -212,8 +212,8 @@ getById: async (id) => {
             INSERT INTO projects (
                 urls, name, start_date, expected_end_date, status, priority, end_date, job_no, 
                 assigned_team, clients, target_end_date, goals, description, created_by,
-                milestones, milestones_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                milestones, milestones_status,isPrintProject
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
         `;
         const values = [
             data.urls,
@@ -231,7 +231,8 @@ getById: async (id) => {
             data.description,
             data.created_by,
             data.milestones,
-            data.milestones_status
+            data.milestones_status,
+            data.isPrintProject
         ];
 
         try {
@@ -248,7 +249,7 @@ getById: async (id) => {
                 urls = ?, name = ?, start_date = ?, expected_end_date = ?, 
                 status = ?, priority = ?, end_date = ?, job_no = ?, assigned_team = ?, clients = ?, 
                 target_end_date = ?, goals = ?, description = ?, created_by = ?,
-                milestones = ?, milestones_status = ?
+                milestones = ?, milestones_status = ?,isPrintProject=?
             WHERE id = ?
         `;
         const values = [
@@ -268,6 +269,7 @@ getById: async (id) => {
             data.created_by,
             data.milestones,
             data.milestones_status,
+            data.isPrintProject,
             id
         ];
 
