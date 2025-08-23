@@ -1,0 +1,37 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main   # or your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Decode .env file from GitHub Secrets
+      - name: Decode .env
+        run: |
+          echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > .env
+          ls -la
+          cat .env | sed 's/./*/g'   # Mask contents in logs
+
+      # Login to AWS EC2 (using SSH)
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            cd ~/employee-portal-backend
+            git pull origin main
+            echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > .env
+            docker-compose down
+            docker-compose up -d --build
+            docker ps
