@@ -47,12 +47,30 @@ app.use('/api/issue',Issue)
 app.use('/api/file',file)
 app.use('/api/CommunicationLog',CommunicationLog)
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'OK',
-    timestamp: new Date().toISOString()
-  });
+
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    const dbConnection = await pool.getConnection();
+    dbConnection.release();
+    
+    // Test auth database connection  
+    const authDbConnection = await authPool.getConnection();
+    authDbConnection.release();
+    
+    res.status(200).json({ 
+      status: 'OK', 
+      database: 'connected',
+      authDatabase: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Error handling middleware
@@ -72,7 +90,7 @@ app.use((req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

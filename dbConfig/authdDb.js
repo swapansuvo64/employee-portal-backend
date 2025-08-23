@@ -8,7 +8,8 @@ const authPool = mysql.createPool({
   database: process.env.AUTH_DB_NAME,
   timezone: process.env.DB_TIMEZONE,
   waitForConnections: true,
-  connectionLimit: 10,
+  ssl: { rejectUnauthorized: false },
+  connectTimeout: 20000,
   queueLimit: 0
 });
 
