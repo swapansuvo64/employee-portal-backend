@@ -1,6 +1,6 @@
 // controllers/project.js
 const Project = require('../models/project');
-
+const db = require('../dbConfig/db');
 exports.getAllProjects = async (req, res, next) => {
     try {
         const projects = await Project.getAll();
@@ -38,7 +38,7 @@ exports.updateProject = async (req, res, next) => {
     try {
         const updatedProject = await Project.update(req.params.id, {
             ...req.body,
-            created_by: req.user.id // assuming you have user info in req.user
+            created_by: req.user.id 
         });
         res.status(200).json(updatedProject);
     } catch (error) {

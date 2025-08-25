@@ -37,76 +37,86 @@ const authController = {
     }
   },
 
-async login(req, res) {
-  try {
-    const { name, password } = req.body;
-    
-    if (!name || !password) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Name and password are required' 
-      });
-    }
-
-    const user = await User.findUserByName(name);
-    if (!user) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Invalid credentials' 
-      });
-    }
-
-    const isMatch = await User.comparePassword(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Invalid credentials' 
-      });
-    }
-
-    const token = User.generateJWT(user.id, user.role);
-    await User.storeToken(user.id, token);
-
-    // Fetch profile information
-    const [profileRows] = await pool.execute('SELECT * FROM profile WHERE uid = ?', [user.uid]);
-    const profile = profileRows[0] || {};
-
-    res.json({ 
-      success: true,
-      message: 'Login successful',
-      data: {
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          role: user.role,
-          uid: user.uid
-        },
-        profile: {
-          username: profile.username,
-          uid: profile.uid,
-          firstname: profile.firstname,
-          lastname: profile.lastname,
-          profilepicurl: profile.profilepicurl,
-          role: profile.role,
-          designation: profile.designation
-          // Add other profile fields you want to return
-        }
+  async login(req, res) {
+    try {
+      const { name, password, platform = 'employee' } = req.body; // Default to 'employee'
+      
+      if (!name || !password) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Name and password are required' 
+        });
       }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Internal server error' 
-    });
-  }
-},
+
+      // Validate platform
+      if (!['employee', 'client'].includes(platform)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Platform must be either "employee" or "client"'
+        });
+      }
+
+      const user = await User.findUserByName(name);
+      if (!user) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid credentials' 
+        });
+      }
+
+      const isMatch = await User.comparePassword(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid credentials' 
+        });
+      }
+
+      const token = User.generateJWT(user.id, user.role);
+      await User.storeToken(user.id, token, platform);
+
+      // Fetch profile information
+      const [profileRows] = await pool.execute('SELECT * FROM profile WHERE uid = ?', [user.uid]);
+      const profile = profileRows[0] || {};
+
+      res.json({ 
+        success: true,
+        message: 'Login successful',
+        data: {
+          token,
+          platform,
+          user: {
+            id: user.id,
+            name: user.name,
+            role: user.role,
+            uid: user.uid
+          },
+          profile: {
+            username: profile.username,
+            uid: profile.uid,
+            firstname: profile.firstname,
+            lastname: profile.lastname,
+            profilepicurl: profile.profilepicurl,
+            role: profile.role,
+            designation: profile.designation
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Internal server error' 
+      });
+    }
+  },
 
   async logout(req, res) {
     try {
       const userId = req.user.id;
-      await User.clearToken(userId);
+      const platform = req.body.platform || 'employee'; // Get platform from request body
+      
+      await User.clearToken(userId, platform);
       res.json({ 
         success: true,
         message: 'Logout successful' 

@@ -1,5 +1,6 @@
 const db = require('../dbConfig/db');
-
+const { compareMilestones } = require('../utils/milestoneUtils');
+const sendEmail = require('../middleware/sendCompanyMail');
 const Project = {
     getAll: async () => {
         try {
@@ -41,7 +42,7 @@ const Project = {
 
                 // Collect all UIDs we need to fetch (manager, lead, and members)
                 const uidsToFetch = [];
-                
+
                 if (project.team_manager_uid) {
                     uidsToFetch.push(project.team_manager_uid);
                 }
@@ -76,15 +77,15 @@ const Project = {
                 }, {});
 
                 // Extract members, manager, and lead
-                const teamMembers = project.team_member 
+                const teamMembers = project.team_member
                     ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
                     : [];
 
-                const teamManager = project.team_manager_uid 
+                const teamManager = project.team_manager_uid
                     ? profileMap[project.team_manager_uid]
                     : null;
 
-                const teamLead = project.team_lead_uid 
+                const teamLead = project.team_lead_uid
                     ? profileMap[project.team_lead_uid]
                     : null;
 
@@ -102,10 +103,10 @@ const Project = {
         }
     },
 
-getById: async (id) => {
-    try {
-        
-        const projectQuery = `
+    getById: async (id) => {
+        try {
+
+            const projectQuery = `
             SELECT 
                 p.*,
                 c.id AS client_id,
@@ -129,42 +130,42 @@ getById: async (id) => {
                 p.id = ?
         `;
 
-        const [projects] = await db.query(projectQuery, [id]);
+            const [projects] = await db.query(projectQuery, [id]);
 
-        if (projects.length === 0) {
-            return null; // No project found
-        }
+            if (projects.length === 0) {
+                return null; // No project found
+            }
 
-        const project = projects[0];
+            const project = projects[0];
 
-        if (!project.assigned_team) {
-            return {
-                ...project,
-                team_members: [],
-                team_manager: null,
-                team_lead: null
-            };
-        }
+            if (!project.assigned_team) {
+                return {
+                    ...project,
+                    team_members: [],
+                    team_manager: null,
+                    team_lead: null
+                };
+            }
 
-        // Collect all UIDs we need to fetch (manager, lead, and members)
-        const uidsToFetch = [];
-        
-        if (project.team_manager_uid) {
-            uidsToFetch.push(project.team_manager_uid);
-        }
-        if (project.team_lead_uid) {
-            uidsToFetch.push(project.team_lead_uid);
-        }
-        if (project.team_member) {
-            uidsToFetch.push(...project.team_member.split(','));
-        }
+            // Collect all UIDs we need to fetch (manager, lead, and members)
+            const uidsToFetch = [];
 
-        const uniqueUids = [...new Set(uidsToFetch)];
+            if (project.team_manager_uid) {
+                uidsToFetch.push(project.team_manager_uid);
+            }
+            if (project.team_lead_uid) {
+                uidsToFetch.push(project.team_lead_uid);
+            }
+            if (project.team_member) {
+                uidsToFetch.push(...project.team_member.split(','));
+            }
 
-        let profiles = [];
-        if (uniqueUids.length > 0) {
-            const placeholders = uniqueUids.map(() => '?').join(',');
-            const memberQuery = `
+            const uniqueUids = [...new Set(uidsToFetch)];
+
+            let profiles = [];
+            if (uniqueUids.length > 0) {
+                const placeholders = uniqueUids.map(() => '?').join(',');
+                const memberQuery = `
                 SELECT 
                     uid, username, firstname, lastname, profilepicurl,
                     role, designation, email, phonno, department
@@ -174,47 +175,47 @@ getById: async (id) => {
                     uid IN (${placeholders})
             `;
 
-            const [profileRows] = await db.query(memberQuery, uniqueUids);
-            profiles = profileRows;
+                const [profileRows] = await db.query(memberQuery, uniqueUids);
+                profiles = profileRows;
+            }
+
+            const profileMap = profiles.reduce((map, profile) => {
+                map[profile.uid] = profile;
+                return map;
+            }, {});
+
+            const teamMembers = project.team_member
+                ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
+                : [];
+
+            const teamManager = project.team_manager_uid
+                ? profileMap[project.team_manager_uid]
+                : null;
+
+            const teamLead = project.team_lead_uid
+                ? profileMap[project.team_lead_uid]
+                : null;
+
+            return {
+                ...project,
+                team_members: teamMembers,
+                team_manager: teamManager,
+                team_lead: teamLead
+            };
+        } catch (error) {
+            throw error;
         }
-
-        const profileMap = profiles.reduce((map, profile) => {
-            map[profile.uid] = profile;
-            return map;
-        }, {});
-
-        const teamMembers = project.team_member 
-            ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
-            : [];
-
-        const teamManager = project.team_manager_uid 
-            ? profileMap[project.team_manager_uid]
-            : null;
-
-        const teamLead = project.team_lead_uid 
-            ? profileMap[project.team_lead_uid]
-            : null;
-
-        return {
-            ...project,
-            team_members: teamMembers,
-            team_manager: teamManager,
-            team_lead: teamLead
-        };
-    } catch (error) {
-        throw error;
-    }
-},
+    },
 
 
     create: async (data) => {
         const query = `
-            INSERT INTO projects (
-                urls, name, start_date, expected_end_date, status, priority, end_date, job_no, 
-                assigned_team, clients, target_end_date, goals, description, created_by,
-                milestones, milestones_status,isPrintProject
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
-        `;
+        INSERT INTO projects (
+            urls, name, start_date, expected_end_date, status, priority, end_date, job_no, 
+            assigned_team, clients, target_end_date, goals, description, created_by,
+            milestones, milestones_status, isPrintProject
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
         const values = [
             data.urls,
             data.name,
@@ -237,47 +238,96 @@ getById: async (id) => {
 
         try {
             const [result] = await db.query(query, values);
-            return { id: result.insertId, ...data };
+            const newProject = { id: result.insertId, ...data };
+
+            // Send project creation email (non-blocking)
+            if (data.clients) {
+                Project.sendProjectCreationEmail(
+                    result.insertId,
+                    data.clients,
+                    data.name,
+                    data.start_date,
+                    data.expected_end_date || data.target_end_date
+                ).catch(error => {
+                    console.error('Failed to send project creation email:', error);
+                });
+            }
+
+            return newProject;
         } catch (error) {
             throw error;
         }
     },
 
     update: async (id, data) => {
-        const query = `
+        try {
+            // First get the current project data to compare
+            const currentProject = await Project.getById(id);
+
+            const query = `
             UPDATE projects SET 
                 urls = ?, name = ?, start_date = ?, expected_end_date = ?, 
                 status = ?, priority = ?, end_date = ?, job_no = ?, assigned_team = ?, clients = ?, 
                 target_end_date = ?, goals = ?, description = ?, created_by = ?,
-                milestones = ?, milestones_status = ?,isPrintProject=?
+                milestones = ?, milestones_status = ?, isPrintProject = ?
             WHERE id = ?
         `;
-        const values = [
-            data.urls,
-            data.name,
-            data.start_date,
-            data.expected_end_date,
-            data.status,
-            data.priority,
-            data.end_date,
-            data.job_no,
-            data.assigned_team,
-            data.clients,
-            data.target_end_date,
-            data.goals,
-            data.description,
-            data.created_by,
-            data.milestones,
-            data.milestones_status,
-            data.isPrintProject,
-            id
-        ];
+            const values = [
+                data.urls,
+                data.name,
+                data.start_date,
+                data.expected_end_date,
+                data.status,
+                data.priority,
+                data.end_date,
+                data.job_no,
+                data.assigned_team,
+                data.clients,
+                data.target_end_date,
+                data.goals,
+                data.description,
+                data.created_by,
+                data.milestones,
+                data.milestones_status,
+                data.isPrintProject,
+                id
+            ];
 
-        try {
             const [result] = await db.query(query, values);
             if (result.affectedRows === 0) {
                 throw new Error('Project not found');
             }
+
+            // Check for milestone progress
+            if (currentProject && data.milestones && data.milestones_status) {
+                const progressedMilestones = compareMilestones(
+                    currentProject.milestones,
+                    data.milestones,
+                    currentProject.milestones_status,
+                    data.milestones_status
+                );
+
+                if (progressedMilestones && progressedMilestones.length > 0) {
+                    // Get client email
+                    //const clientEmail = await Project.getClientEmail(data.clients || currentProject.clients);
+                    const clientInfo = await Project.getClientEmail(data.clients || currentProject.clients);
+                    if (clientInfo && clientInfo.email) {
+                        // Send progress email (non-blocking)
+                        Project.sendProgressEmail(
+                            id,
+                            progressedMilestones,
+                            // clientEmail,
+                            clientInfo,
+                            data.name || currentProject.name,
+                            data.target_end_date || data.expected_end_date || currentProject.target_end_date || currentProject.expected_end_date
+                        ).catch(error => {
+                            console.error('Failed to send progress email:', error);
+                            // Don't throw error here as we don't want to fail the update
+                        });
+                    }
+                }
+            }
+
             return { id, ...data };
         } catch (error) {
             throw error;
@@ -294,7 +344,360 @@ getById: async (id) => {
         } catch (error) {
             throw error;
         }
+    },
+
+
+    //-------------------------------------------------email------------------------------------------------------
+
+    getClientEmail: async (clientId) => {
+        try {
+            const query = `
+            SELECT email, client_name 
+            FROM clients 
+            WHERE id = ?
+        `;
+            const [results] = await db.query(query, [clientId]);
+            return results.length > 0 ? {
+                email: results[0].email,
+                client_name: results[0].client_name
+            } : null;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    sendProgressEmail: async (projectId, progressedMilestones, clientInfo, projectName, deadline) => {
+        try {
+            const milestone = progressedMilestones[0];
+
+            // Format the date
+            const formatDate = (dateString) => {
+                if (!dateString) return 'Not specified';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            };
+
+            const formattedDeadline = formatDate(deadline);
+
+            const emailContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        line-height: 1.6; 
+                        margin: 0; 
+                        padding: 0; 
+                        color: #000000; 
+                    }
+                    .container { 
+                        max-width: 600px; 
+                        margin: 0 auto; 
+                        background-color: #ffffff; 
+                    }
+                    .header { 
+                        background-color: #ffffff;
+                        padding: 30px 20px; 
+                        text-align: center; 
+                    }
+                    .logo {
+                        max-width: 200px;
+                        height: auto;
+                    }
+                    .content { 
+                        padding: 30px 20px; 
+                        background-color: #ffffff;
+                    }
+                    .progress-section {
+                        background-color: #ffffff;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin: 20px 0;
+                        text-align: center;
+                    }
+                    .deadline-section {
+                        background-color: #ffffff; 
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin: 20px 0;
+                        text-align: center;
+                    }
+                    .footer { 
+                       background-color: #ffffff;
+                        padding: 25px 20px; 
+                        text-align: center; 
+                        color: #ffffff;
+                    }
+                    h2 {
+                        color: #ffffff;
+                        margin: 0;
+                        font-size: 24px;
+                    }
+                    h3 {
+                        color: #000000;
+                        margin: 0 0 15px 0;
+                        font-size: 20px;
+                    }
+                    p {
+                        margin: 10px 0;
+                        color: #000000;
+                    }
+                    .bold {
+                        font-weight: bold;
+                    }
+                    .milestone-name {
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #000000;
+                    }
+                    .deadline-text {
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #000000;
+                    }
+                    .signature {
+                        color: #ffffff;
+                        font-weight: normal;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- Header with logo -->
+                    <div class="header">
+                        <img src="https://voicemsgsequoia.s3.ap-south-1.amazonaws.com/sequiaPrintLogo.png" alt="Sequoia Print Logo" class="logo">
+                        <h2>Project Update</h2>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="content">
+                        <p>Dear <span class="bold">${clientInfo.client_name}</span>,</p>
+                        
+                        <p>Sequoia Print is glad to be your partner as you bring your <span class="bold">${projectName}</span> to life.</p>
+
+                        <!-- Progress Section -->
+                        <div class="progress-section">
+                            <h3> Project Progress Update</h3>
+                            <p>Your project has now successfully progressed to:</p>
+                            <p class="milestone-name">${milestone.milestone}</p>
+                        </div>
+
+                        <!-- Deadline Section -->
+                        <div class="deadline-section">
+                            <h3>Important Deadline</h3>
+                            <p class="deadline-text">${formattedDeadline}</p>
+                        </div>
+
+                        <p>For any questions or support, please feel free to reach out to our team.</p>
+                        
+                        <p class="bold">We appreciate your trust in Sequoia Print!</p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p class="signature">Best regards,</p>
+                        <p class="signature"><strong>Team Sequoia Print</strong></p>
+                        <p class="signature" style="font-size: 12px; margin-top: 15px;">
+                            Excellence in Printing Solutions
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+            const emailOptions = {
+                to: clientInfo.email,
+                subject: `Project Update: ${projectName} - Progress to ${milestone.milestone}`,
+                html: emailContent
+            };
+
+            const result = await sendEmail(emailOptions);
+            return result;
+        } catch (error) {
+            console.error('Error sending progress email:', error);
+            throw error;
+        }
+    },
+    sendProjectCreationEmail: async (projectId, clientId, projectName, startDate, endDate) => {
+        try {
+            const clientInfo = await Project.getClientEmail(clientId);
+
+            if (!clientInfo || !clientInfo.email) {
+                console.log('No client email found for project creation notification');
+                return;
+            }
+
+            // Format dates
+            const formatDate = (dateString) => {
+                if (!dateString) return 'Not specified';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            };
+
+            const formattedStartDate = formatDate(startDate);
+            const formattedEndDate = formatDate(endDate);
+
+            const emailContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        line-height: 1.6; 
+                        margin: 0; 
+                        padding: 0; 
+                        color: #000000; 
+                    }
+                    .container { 
+                        max-width: 600px; 
+                        margin: 0 auto; 
+                        background-color: #ffffff; 
+                    }
+                    .header { 
+                        background-color: #ffffff;
+                        padding: 30px 20px; 
+                        text-align: center; 
+                    }
+                    .logo {
+                        max-width: 200px;
+                        height: auto;
+                    }
+                    .content { 
+                        padding: 30px 20px; 
+                        background-color: #ffffff;
+                    }
+                    .welcome-section {
+                       background-color: #ffffff;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin: 20px 0;
+                        text-align: center;
+                    }
+                    .timeline-section {
+                        background-color: #ffffff; 
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin: 20px 0;
+                        text-align: center;
+                        border: 2px solid #ea7426;
+                    }
+                    .footer { 
+                        background-color: #ffffff;
+                        padding: 25px 20px; 
+                        text-align: center; 
+                        color: #ffffff;
+                    }
+                    h2 {
+                        color: #000000;
+                        margin: 0;
+                        font-size: 24px;
+                    }
+                    h3 {
+                        color: #000000;
+                        margin: 0 0 15px 0;
+                        font-size: 20px;
+                    }
+                    p {
+                        margin: 10px 0;
+                        color: #000000;
+                    }
+                    .bold {
+                        font-weight: bold;
+                    }
+                    .project-name {
+                        font-size: 22px;
+                        font-weight: bold;
+                        color: #000000;
+                    }
+                    .timeline-text {
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #000000;
+                    }
+                    .signature {
+                        color: #ffffff;
+                        font-weight: normal;
+                    }
+                    .highlight {
+                        color: #ea7426;
+                        font-weight: bold;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- Header with logo -->
+                    <div class="header">
+                        <img src="https://voicemsgsequoia.s3.ap-south-1.amazonaws.com/sequiaPrintLogo.png" alt="Sequoia Print Logo" class="logo">
+                        <h2>New Project Started</h2>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="content">
+                        <p>Dear <span class="bold">${clientInfo.client_name}</span>,</p>
+                        
+                        <p>We are excited to announce that your new project has been successfully created!</p>
+
+                        <!-- Welcome Section -->
+                        <div class="welcome-section">
+                            <h3>🎉 Welcome to Sequoia Print</h3>
+                            <p>We're thrilled to partner with you on:</p>
+                            <p class="project-name">${projectName}</p>
+                        </div>
+
+                        <!-- Timeline Section -->
+                        <div class="timeline-section">
+                            <h3>📅 Project Timeline</h3>
+                            <p><span class="bold">Start Date:</span> <span class="timeline-text">${formattedStartDate}</span></p>
+                            <p><span class="bold">Expected Completion:</span> <span class="timeline-text">${formattedEndDate}</span></p>
+                        </div>
+
+                        <p>Our team is already working on bringing your vision to life. We'll keep you updated at every milestone.</p>
+                        
+                        <p class="bold">Thank you for choosing <span class="highlight">Sequoia Print</span> for your printing needs!</p>
+
+                        <p>For any questions or to discuss your project, please don't hesitate to contact us.</p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p class="signature">Best regards,</p>
+                        <p class="signature"><strong>Team Sequoia Print</strong></p>
+                        <p class="signature" style="font-size: 12px; margin-top: 15px;">
+                            Excellence in Printing Solutions
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+            const emailOptions = {
+                to: clientInfo.email,
+                subject: `🚀 New Project Started: ${projectName}`,
+                html: emailContent
+            };
+
+            const result = await sendEmail(emailOptions);
+            console.log('Project creation email sent successfully');
+            return result;
+        } catch (error) {
+            console.error('Error sending project creation email:', error);
+            throw error;
+        }
     }
+
 };
 
 module.exports = Project;

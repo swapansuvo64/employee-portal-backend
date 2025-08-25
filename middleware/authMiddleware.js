@@ -22,9 +22,9 @@ const authMiddleware = {
         });
       }
 
-      // Verify token exists in database and matches
-      const user = await User.findUserById(decoded.id);
-      if (!user || user.token !== token) {
+      // Check if token exists in either employeeToken or clientToken column
+      const user = await User.findUserByToken(token);
+      if (!user) {
         return res.status(401).json({ 
           success: false,
           message: 'Invalid token' 

@@ -16,7 +16,8 @@ class User {
         name VARCHAR(255) NOT NULL,
         password VARCHAR(255) NOT NULL,
         role VARCHAR(255) NOT NULL,
-        token VARCHAR(255),
+        employeeToken VARCHAR(255),
+        uid VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -24,11 +25,9 @@ class User {
     await authPool.query(query);
     console.log('User table created or already exists');
   }
- static generateUID(name, createdAt, id) {
-    
+
+  static generateUID(name, createdAt, id) {
     const firstLetter = name.charAt(0).toUpperCase();
-    
- 
     const date = new Date(createdAt);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0'); 
@@ -38,70 +37,69 @@ class User {
     return `${firstLetter}${dateStr}${id}`;
   }
 
-static async createUser(name, password, role) {
-  const passwordHash = await this.hashPassword(password);
+  static async createUser(name, password, role) {
+    const passwordHash = await this.hashPassword(password);
 
-  // Step 1: Insert user into the User table (authPool)
-  const query = 'INSERT INTO User (name, password, role) VALUES (?, ?, ?)';
-  const [result] = await authPool.execute(query, [name, passwordHash, role]);
+    // Step 1: Insert user into the User table (authPool)
+    const query = 'INSERT INTO User (name, password, role) VALUES (?, ?, ?)';
+    const [result] = await authPool.execute(query, [name, passwordHash, role]);
 
-  // Step 2: Get newly created user
-  const user = await this.findUserById(result.insertId);
+    // Step 2: Get newly created user
+    const user = await this.findUserById(result.insertId);
 
-  // Step 3: Generate UID
-  const uid = this.generateUID(name, user.createdAt, user.id);
+    // Step 3: Generate UID
+    const uid = this.generateUID(name, user.createdAt, user.id);
 
-  // Step 4: Update the User table with UID
-  await authPool.execute('UPDATE User SET uid = ? WHERE id = ?', [uid, user.id]);
+    // Step 4: Update the User table with UID
+    await authPool.execute('UPDATE User SET uid = ? WHERE id = ?', [uid, user.id]);
 
-  // Step 5: Create corresponding entry in the Profile table (normal pool)
-  const profileQuery = `
-    INSERT INTO profile (username, uid, firstname, lastname, profilepicurl, created_at, updated_at, role, designation)
-    VALUES (?, ?, '', '', '', NOW(), NOW(), ?, '')
-  `;
-  await pool.execute(profileQuery, [name, uid, role]);
+    // Step 5: Create corresponding entry in the Profile table (normal pool)
+    const profileQuery = `
+      INSERT INTO profile (username, uid, firstname, lastname, profilepicurl, created_at, updated_at, role, designation)
+      VALUES (?, ?, '', '', '', NOW(), NOW(), ?, '')
+    `;
+    await pool.execute(profileQuery, [name, uid, role]);
 
-  return { id: result.insertId, uid };
-}
-
-static async deleteUser(uid) {
-  const connectionAuth = await authPool.getConnection();
-  const connectionMain = await pool.getConnection();
-
-  try {
-    // Begin transactions in both DBs
-    await connectionAuth.beginTransaction();
-    await connectionMain.beginTransaction();
-
-    // 1️⃣ Delete from Profile table (main DB)
-    await connectionMain.execute(
-      'DELETE FROM profile WHERE uid = ?',
-      [uid]
-    );
-
-    // 2️⃣ Delete from User table (auth DB)
-    await connectionAuth.execute(
-      'DELETE FROM User WHERE uid = ?',
-      [uid]
-    );
-
-    // Commit both
-    await connectionAuth.commit();
-    await connectionMain.commit();
-
-    return { success: true, message: 'User deleted successfully' };
-  } catch (err) {
-    // Rollback both if error
-    await connectionAuth.rollback();
-    await connectionMain.rollback();
-    throw err;
-  } finally {
-    // Release connections
-    connectionAuth.release();
-    connectionMain.release();
+    return { id: result.insertId, uid };
   }
-}
 
+  static async deleteUser(uid) {
+    const connectionAuth = await authPool.getConnection();
+    const connectionMain = await pool.getConnection();
+
+    try {
+      // Begin transactions in both DBs
+      await connectionAuth.beginTransaction();
+      await connectionMain.beginTransaction();
+
+      // 1️⃣ Delete from Profile table (main DB)
+      await connectionMain.execute(
+        'DELETE FROM profile WHERE uid = ?',
+        [uid]
+      );
+
+      // 2️⃣ Delete from User table (auth DB)
+      await connectionAuth.execute(
+        'DELETE FROM User WHERE uid = ?',
+        [uid]
+      );
+
+      // Commit both
+      await connectionAuth.commit();
+      await connectionMain.commit();
+
+      return { success: true, message: 'User deleted successfully' };
+    } catch (err) {
+      // Rollback both if error
+      await connectionAuth.rollback();
+      await connectionMain.rollback();
+      throw err;
+    } finally {
+      // Release connections
+      connectionAuth.release();
+      connectionMain.release();
+    }
+  }
 
   static async findUserByName(name) {
     const [rows] = await authPool.execute('SELECT * FROM User WHERE name = ?', [name]);
@@ -134,28 +132,48 @@ static async deleteUser(uid) {
     }
   }
 
-  static async storeToken(userId, token) {
+  static async storeToken(userId, token, platform) {
+    const column = platform === 'client' ? 'clientToken' : 'employeeToken';
     await authPool.execute(
-      'UPDATE User SET token = ? WHERE id = ?',
+      `UPDATE User SET ${column} = ? WHERE id = ?`,
       [token, userId]
     );
   }
 
-  static async validateToken(userId, token) {
+  static async validateToken(userId, token, platform) {
+    const column = platform === 'client' ? 'clientToken' : 'employeeToken';
     const [rows] = await authPool.execute(
-      'SELECT 1 FROM User WHERE id = ? AND token = ?',
+      `SELECT 1 FROM User WHERE id = ? AND ${column} = ?`,
       [userId, token]
     );
     return rows.length > 0;
   }
 
-  static async clearToken(userId) {
+  static async clearToken(userId, platform) {
+    const column = platform === 'client' ? 'clientToken' : 'employeeToken';
     await authPool.execute(
-      'UPDATE User SET token = NULL WHERE id = ?',
+      `UPDATE User SET ${column} = NULL WHERE id = ?`,
       [userId]
     );
   }
+
+  static async clearAllTokens(userId) {
+    await authPool.execute(
+      'UPDATE User SET employeeToken = NULL, clientToken = NULL WHERE id = ?',
+      [userId]
+    );
+  }
+
+  static async findUserByToken(token) {
+    // Check both token columns
+    const [rows] = await authPool.execute(
+      'SELECT * FROM User WHERE employeeToken = ? OR clientToken = ?',
+      [token, token]
+    );
+    return rows[0];
+  }
 }
+
 
 // Initialize table on startup
 User.createTable().catch(console.error);
