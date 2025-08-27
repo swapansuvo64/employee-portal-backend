@@ -22,8 +22,8 @@ class CommunicationLogController {
 
   static async create(req, res) {
     try {
-      const { log_date,note, communication_type, projectId, createdBy } = req.body;
-      const result = await CommunicationLog.create({ log_date,note, communication_type, projectId, createdBy });
+      const { log_date,note, communication_type,projectstageIndex, projectId, createdBy } = req.body;
+      const result = await CommunicationLog.create({ log_date,note, communication_type,projectstageIndex, projectId, createdBy });
       res.status(201).json({ message: "Log created", id: result.id });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -33,8 +33,8 @@ class CommunicationLogController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { log_date, note,communication_type } = req.body;
-      const updated = await CommunicationLog.update(id, { log_date,note, communication_type });
+      const { log_date, note,communication_type,projectstageIndex } = req.body;
+      const updated = await CommunicationLog.update(id, { log_date,note, communication_type,projectstageIndex });
       if (!updated) return res.status(404).json({ message: "Log not found" });
       res.json({ message: "Log updated" });
     } catch (err) {

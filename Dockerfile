@@ -31,7 +31,7 @@ EXPOSE 9000
 
 # Better health check that verifies both web server and database
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f https://internalApi.sequoia-print.com/health || exit 1
+  CMD curl -f http://localhost:9000/health || exit 1
 
 # Run the application
 CMD ["node", "server.js"]

@@ -17,6 +17,7 @@ const Comment=require('./routes/assignment/comment')
 const Issue =require('./routes/assignment/issue')
 const file =require('./routes/ClientOps/filesRoutes')
 const CommunicationLog=require('./routes/ClientOps/communicationLogRoutes')
+const SubTaskRoutes = require('./routes/ClientOps/subTaskRoutes');
 const app = express();
 
 // Middleware
@@ -49,6 +50,7 @@ app.use('/api/comment',Comment)
 app.use('/api/issue',Issue)
 app.use('/api/file',file)
 app.use('/api/CommunicationLog',CommunicationLog)
+app.use('/api/subtasks', SubTaskRoutes);
 
 
 app.get('/health', async (req, res) => {

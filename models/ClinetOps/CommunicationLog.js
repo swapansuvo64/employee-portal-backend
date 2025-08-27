@@ -14,18 +14,18 @@ static async getByProjectId(projectId) {
     return rows;
   }
 
-static async create({ log_date,note, communication_type, projectId, createdBy }) {
+static async create({ log_date,note, communication_type,projectstageIndex, projectId, createdBy }) {
   const [result] = await pool.query(
-    "INSERT INTO communication_log (log_date,note, communication_type, projectId, createdBy) VALUES (?, ?, ?, ?, ?)",
-    [log_date,note, communication_type, projectId, createdBy]
+    "INSERT INTO communication_log (log_date,note, communication_type,projectstageIndex, projectId, createdBy) VALUES (?, ?, ?, ?, ?,?)",
+    [log_date,note, communication_type,projectstageIndex, projectId, createdBy]
   );
   return { id: result.insertId };
 }
 
-static async update(id, { log_date,note, communication_type }) {
+static async update(id, { log_date,note, communication_type,projectstageIndex }) {
   const [result] = await pool.query(
-    "UPDATE communication_log SET log_date = ?,note=?, communication_type = ? WHERE id = ?",
-    [log_date,note, communication_type, id]
+    "UPDATE communication_log SET log_date = ?,note=?, communication_type = ? ,projectstageIndex=? WHERE id = ?",
+    [log_date,note, communication_type,projectstageIndex, id]
   );
   return result.affectedRows;
 }
