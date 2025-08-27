@@ -1,11 +1,12 @@
 const User = require('../models/User');
 const pool = require('../dbConfig/db');
-const authPool=require('../dbConfig/authdDb')
+const authPool = require('../dbConfig/authdDb');
+
 const authController = {
   async signup(req, res) {
     try {
       const { name, password, role } = req.body;
-      console.log(req.body)
+      console.log(req.body);
       
       if (!name || !password || !role) {
         return res.status(400).json({ 
@@ -39,7 +40,7 @@ const authController = {
 
   async login(req, res) {
     try {
-      const { name, password, platform = 'employee' } = req.body; // Default to 'employee'
+      const { name, password, platform = 'employee' } = req.body;
       
       if (!name || !password) {
         return res.status(400).json({ 
@@ -64,6 +65,15 @@ const authController = {
         });
       }
 
+      // Check if user has a password hash
+      if (!user.password) {
+        console.error('User found but no password hash exists:', user);
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid credentials - no password set' 
+        });
+      }
+
       const isMatch = await User.comparePassword(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ 
@@ -75,9 +85,20 @@ const authController = {
       const token = User.generateJWT(user.id, user.role);
       await User.storeToken(user.id, token, platform);
 
-      // Fetch profile information
-      const [profileRows] = await pool.execute('SELECT * FROM profile WHERE uid = ?', [user.uid]);
-      const profile = profileRows[0] || {};
+      // Fetch profile information - handle potential database connection issues
+      let profile = {};
+      try {
+        // Check if pool connection is available
+        if (pool && typeof pool.execute === 'function') {
+          const [profileRows] = await pool.execute('SELECT * FROM profile WHERE uid = ?', [user.uid]);
+          profile = profileRows[0] || {};
+        } else {
+          console.warn('Profile pool connection not available, skipping profile fetch');
+        }
+      } catch (profileError) {
+        console.error('Error fetching profile:', profileError);
+        // Continue without profile data - don't fail the login
+      }
 
       res.json({ 
         success: true,
@@ -92,13 +113,13 @@ const authController = {
             uid: user.uid
           },
           profile: {
-            username: profile.username,
-            uid: profile.uid,
-            firstname: profile.firstname,
-            lastname: profile.lastname,
-            profilepicurl: profile.profilepicurl,
-            role: profile.role,
-            designation: profile.designation
+            username: profile.username || user.name,
+            uid: profile.uid || user.uid,
+            firstname: profile.firstname || '',
+            lastname: profile.lastname || '',
+            profilepicurl: profile.profilepicurl || '',
+            role: profile.role || user.role,
+            designation: profile.designation || ''
           }
         }
       });
@@ -114,7 +135,7 @@ const authController = {
   async logout(req, res) {
     try {
       const userId = req.user.id;
-      const platform = req.body.platform || 'employee'; // Get platform from request body
+      const platform = req.body.platform || 'employee';
       
       await User.clearToken(userId, platform);
       res.json({ 
@@ -158,17 +179,20 @@ const authController = {
     }
   },
 
-   async deleteUser(req, res) {
+  async deleteUser(req, res) {
     const { uid } = req.params;
 
     if (!uid) {
       return res.status(400).json({ success: false, message: 'UID is required' });
     }
 
-    const connectionAuth = await authPool.getConnection();
-    const connectionMain = await pool.getConnection();
+    let connectionAuth;
+    let connectionMain;
 
     try {
+      connectionAuth = await authPool.getConnection();
+      connectionMain = await pool.getConnection();
+
       await connectionAuth.beginTransaction();
       await connectionMain.beginTransaction();
 
@@ -183,13 +207,13 @@ const authController = {
 
       res.json({ success: true, message: 'User deleted successfully' });
     } catch (err) {
-      await connectionAuth.rollback();
-      await connectionMain.rollback();
+      if (connectionAuth) await connectionAuth.rollback();
+      if (connectionMain) await connectionMain.rollback();
       console.error(err);
       res.status(500).json({ success: false, message: 'Error deleting user', error: err.message });
     } finally {
-      connectionAuth.release();
-      connectionMain.release();
+      if (connectionAuth) connectionAuth.release();
+      if (connectionMain) connectionMain.release();
     }
   }
 };

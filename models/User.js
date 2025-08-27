@@ -17,6 +17,7 @@ class User {
         password VARCHAR(255) NOT NULL,
         role VARCHAR(255) NOT NULL,
         employeeToken VARCHAR(255),
+        clientToken VARCHAR(255),
         uid VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -102,13 +103,23 @@ class User {
   }
 
   static async findUserByName(name) {
-    const [rows] = await authPool.execute('SELECT * FROM User WHERE name = ?', [name]);
-    return rows[0];
+    try {
+      const [rows] = await authPool.execute('SELECT * FROM User WHERE name = ?', [name]);
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Error in findUserByName:', error);
+      return null;
+    }
   }
 
   static async findUserById(id) {
-    const [rows] = await authPool.execute('SELECT * FROM User WHERE id = ?', [id]);
-    return rows[0];
+    try {
+      const [rows] = await authPool.execute('SELECT * FROM User WHERE id = ?', [id]);
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Error in findUserById:', error);
+      return null;
+    }
   }
 
   static async hashPassword(password) {
@@ -116,8 +127,18 @@ class User {
   }
 
   static async comparePassword(password, hash) {
-    console.log('Comparing password:', password, 'with hash:', hash);
-    return await bcrypt.compare(password, hash);
+    if (!hash) {
+      console.error('Hash is undefined or null');
+      return false;
+    }
+    
+    try {
+      console.log('Comparing password with hash');
+      return await bcrypt.compare(password, hash);
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
+      return false;
+    }
   }
 
   static generateJWT(userId, role) {
@@ -173,7 +194,6 @@ class User {
     return rows[0];
   }
 }
-
 
 // Initialize table on startup
 User.createTable().catch(console.error);
