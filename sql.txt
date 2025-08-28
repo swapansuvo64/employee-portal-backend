@@ -1,2 +1,2 @@
 CREATE DATABASE IF NOT EXISTS internal_portal;
-cloudflared tunnel --url http://localhost:9000
+cloudflared tunnel --url https://internalApi.sequoia-print.com
