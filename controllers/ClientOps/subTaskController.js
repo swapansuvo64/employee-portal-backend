@@ -38,13 +38,14 @@ const subTaskController = {
   createSubTask: async (req, res) => {
     try {
       const { ProjectId, projectstageIndex, Task, createdBy, IsCompleted } = req.body;
+      console.log(req.body);
       
-      if (!ProjectId || !projectstageIndex || !Task || !createdBy) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "ProjectId, projectstageIndex, Task, and createdBy are required" 
-        });
-      }
+      if (!ProjectId || projectstageIndex === undefined || projectstageIndex === null || !Task || !createdBy) {
+  return res.status(400).json({ 
+    success: false, 
+    message: "ProjectId, projectstageIndex, Task, and createdBy are required" 
+  });
+}
 
       const newSubTask = await SubTask.create({
         ProjectId,
