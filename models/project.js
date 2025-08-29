@@ -12,6 +12,7 @@ const Project = {
                     c.name AS client_name,
                     c.client_name AS client_Company_name,
                     c.urls AS client_urls,
+                    c.email AS client_email,
                     c.description AS client_description,
                     c.companyType AS client_company_type,
                     t.id AS team_id,
@@ -113,6 +114,7 @@ const Project = {
                 c.name AS client_name,
                 c.client_name AS client_Company_name,
                 c.urls AS client_urls,
+                c.email AS client_email,
                 c.description AS client_description,
                 c.companyType AS client_company_type,
                 t.id AS team_id,
@@ -524,6 +526,9 @@ const Project = {
             throw error;
         }
     },
+
+
+    
     sendProjectCreationEmail: async (projectId, clientId, projectName, startDate, endDate) => {
         try {
             const clientInfo = await Project.getClientEmail(clientId);
