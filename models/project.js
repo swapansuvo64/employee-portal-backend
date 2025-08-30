@@ -315,17 +315,17 @@ const Project = {
                     const clientInfo = await Project.getClientEmail(data.clients || currentProject.clients);
                     if (clientInfo && clientInfo.email) {
                         // Send progress email (non-blocking)
-                        Project.sendProgressEmail(
-                            id,
-                            progressedMilestones,
-                            // clientEmail,
-                            clientInfo,
-                            data.name || currentProject.name,
-                            data.target_end_date || data.expected_end_date || currentProject.target_end_date || currentProject.expected_end_date
-                        ).catch(error => {
-                            console.error('Failed to send progress email:', error);
-                            // Don't throw error here as we don't want to fail the update
-                        });
+                        // Project.sendProgressEmail(
+                        //     id,
+                        //     progressedMilestones,
+                        //     // clientEmail,
+                        //     clientInfo,
+                        //     data.name || currentProject.name,
+                        //     data.target_end_date || data.expected_end_date || currentProject.target_end_date || currentProject.expected_end_date
+                        // ).catch(error => {
+                        //     console.error('Failed to send progress email:', error);
+                        //     // Don't throw error here as we don't want to fail the update
+                        // });
                     }
                 }
             }
