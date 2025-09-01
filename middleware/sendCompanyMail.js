@@ -4,15 +4,27 @@ require('dotenv').config();
 
 const sendEmail = async (options) => {
     try {
+        // const transporter = nodemailer.createTransport({
+        //     service: 'gmail',
+        //     auth: {
+        //         user: "suvadeepprojects@gmail.com",
+        //         pass: "otih prsy iqmy cepp",
+        //     }
+        // });
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: "suvadeepprojects@gmail.com",
-                pass: "otih prsy iqmy cepp",
-            }
-        });
+ host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: false, 
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+ tls: {
+  rejectUnauthorized: true
+}
+});
         const mailOptions = {
-            from: `"Sequoia Print pvt ltd" <your_email@gmail.com>`,
+            from: `"Sequoia Print pvt ltd" <business@sequoia-print.com>`,
             to: options.to,
             subject: options.subject,
             html: options.html
@@ -28,3 +40,5 @@ const sendEmail = async (options) => {
 };
 
 module.exports = sendEmail;
+
+

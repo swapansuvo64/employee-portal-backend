@@ -28,7 +28,7 @@ const leaveFormController = {
 
       // Send Email Notification with full name and description
       await sendEmail({
-        to: 'swapansuvo648@gmail.com', // recipient email
+        to: 'yashwijain@sequoia-print.com', // recipient email
         subject: `New Leave Form Submitted by ${firstname} ${lastname}`,
         html: `
           <h2>Leave Request Details</h2>

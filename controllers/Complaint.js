@@ -41,7 +41,7 @@ createComplaint: async (req, res) => {
 
       // Send Email Notification (without name if anonymous)
       await sendEmail({
-        to: 'swapansuvo648@gmail.com',
+        to: 'yashwijain@sequoia-print.com',
         subject: `New Complaint Submitted ${!isAnonymousBool ? `by ${userInfo.firstname} ${userInfo.lastname}` : 'Anonymously'}`,
         html: `
           <h2>Complaint Details</h2>
