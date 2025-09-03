@@ -23,4 +23,15 @@ router.delete("/:id", subTaskController.deleteSubTask);
 // Toggle completion status
 router.patch("/:id/toggle-complete", subTaskController.toggleComplete);
 
+
+router.patch("/swap-indexes", subTaskController.swapSubtaskIndexes);
+
+// Reorder subtasks
+router.patch("/reorder", subTaskController.reorderSubtasks);
+
+
+router.patch("/:id/move-up", subTaskController.moveSubtaskUp);
+
+// Move subtask down
+router.patch("/:id/move-down", subTaskController.moveSubtaskDown);
 module.exports = router;
