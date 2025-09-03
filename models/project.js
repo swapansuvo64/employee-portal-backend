@@ -271,7 +271,7 @@ const Project = {
                 urls = ?, name = ?, start_date = ?, expected_end_date = ?, 
                 status = ?, priority = ?, end_date = ?, job_no = ?, assigned_team = ?, clients = ?, 
                 target_end_date = ?, goals = ?, description = ?, created_by = ?,
-                milestones = ?, milestones_status = ?, isPrintProject = ?
+                milestones = ?, milestones_status = ?, isPrintProject = ?,estimatedTime=?
             WHERE id = ?
         `;
             const values = [
@@ -292,6 +292,7 @@ const Project = {
                 data.milestones,
                 data.milestones_status,
                 data.isPrintProject,
+                data.estimatedTime,
                 id
             ];
 

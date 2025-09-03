@@ -40,7 +40,7 @@ const subTaskController = {
       const { ProjectId, projectstageIndex, Task,subtaskIndex, createdBy, IsCompleted } = req.body;
       console.log(req.body);
       
-      if (!ProjectId || projectstageIndex === undefined || projectstageIndex === null || !Task || !subtaskIndex || !createdBy) {
+      if (!ProjectId || projectstageIndex === undefined || projectstageIndex === null || !Task  || !createdBy) {
   return res.status(400).json({ 
     success: false, 
     message: "ProjectId, projectstageIndex, Task, and createdBy are required" 
