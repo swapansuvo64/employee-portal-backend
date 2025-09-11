@@ -1,6 +1,7 @@
 const db = require('../dbConfig/db');
 const { compareMilestones } = require('../utils/milestoneUtils');
 const sendEmail = require('../middleware/sendCompanyMail');
+const ExpectedDateLog = require("./ClinetOps/expectedDateLog")
 const Project = {
     getAll: async () => {
         try {
@@ -254,6 +255,11 @@ const Project = {
                     console.error('Failed to send project creation email:', error);
                 });
             }
+            await ExpectedDateLog.create({
+                expectedDate: data.expected_end_date,
+                projectId: result.insertId,
+                createdBy: data.created_by
+            });
 
             return newProject;
         } catch (error) {
@@ -263,6 +269,36 @@ const Project = {
 
     update: async (id, data) => {
         try {
+
+            const [rows] = await db.query(
+            "SELECT expected_end_date FROM projects WHERE id = ?",
+            [id]
+        );
+
+        if (rows.length === 0) {
+            throw new Error("Project not found");
+        }
+
+        const currentExpectedDate = rows[0].expected_end_date;
+        const [expectedRows] = await db.query(
+            "SELECT expectedDate FROM expectedDate WHERE projectId =?",
+            [id]
+        );
+        if (expectedRows.length === 0) {
+            throw new Error("Project not found");
+        }
+        ExpectedDate = expectedRows[0].expectedDate;
+
+        if ( data.expected_end_date != ExpectedDate) {
+            await ExpectedDateLog.update({
+                projectId: id,
+                expectedDate: currentExpectedDate,
+                createdBy: data.created_by,
+            });
+        } else{
+            console.log("error")
+        }
+
             // First get the current project data to compare
             const currentProject = await Project.getById(id);
 
