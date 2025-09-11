@@ -20,13 +20,16 @@ const Project = {
                     t.team_name,
                     t.manager AS team_manager_uid,
                     t.team_lead AS team_lead_uid,
-                    t.team_member
+                    t.team_member,
+                    e.expectedDate AS Past_end_date
                 FROM 
                     projects p
                 LEFT JOIN 
                     clients c ON p.clients = c.id
                 LEFT JOIN 
                     teams t ON p.assigned_team = t.id
+                LEFT JOIN
+                    expectedDate e ON p.id = e.projectId
             `;
 
             const [projects] = await db.query(projectQuery);
@@ -122,13 +125,16 @@ const Project = {
                 t.team_name,
                 t.manager AS team_manager_uid,
                 t.team_lead AS team_lead_uid,
-                t.team_member
+                t.team_member,
+                e.expectedDate AS Past_end_date
             FROM 
                 projects p
             LEFT JOIN 
                 clients c ON p.clients = c.id
             LEFT JOIN 
                 teams t ON p.assigned_team = t.id
+            LEFT JOIN
+                    expectedDate e ON p.id = e.projectId
             WHERE 
                 p.id = ?
         `;
@@ -271,33 +277,33 @@ const Project = {
         try {
 
             const [rows] = await db.query(
-            "SELECT expected_end_date FROM projects WHERE id = ?",
-            [id]
-        );
+                "SELECT expected_end_date FROM projects WHERE id = ?",
+                [id]
+            );
 
-        if (rows.length === 0) {
-            throw new Error("Project not found");
-        }
+            if (rows.length === 0) {
+                throw new Error("Project not found");
+            }
 
-        const currentExpectedDate = rows[0].expected_end_date;
-        const [expectedRows] = await db.query(
-            "SELECT expectedDate FROM expectedDate WHERE projectId =?",
-            [id]
-        );
-        if (expectedRows.length === 0) {
-            throw new Error("Project not found");
-        }
-        ExpectedDate = expectedRows[0].expectedDate;
+            const currentExpectedDate = rows[0].expected_end_date;
+            const [expectedRows] = await db.query(
+                "SELECT expectedDate FROM expectedDate WHERE projectId =?",
+                [id]
+            );
+            if (expectedRows.length === 0) {
+                throw new Error("Project not found");
+            }
+            ExpectedDate = expectedRows[0].expectedDate;
 
-        if ( data.expected_end_date != ExpectedDate) {
-            await ExpectedDateLog.update({
-                projectId: id,
-                expectedDate: currentExpectedDate,
-                createdBy: data.created_by,
-            });
-        } else{
-            console.log("error")
-        }
+            if (data.expected_end_date != ExpectedDate) {
+                await ExpectedDateLog.update(
+                    id, 
+                    currentExpectedDate, 
+                    data.created_by 
+                );
+            } else {
+                console.log("error")
+            }
 
             // First get the current project data to compare
             const currentProject = await Project.getById(id);
@@ -400,6 +406,48 @@ const Project = {
                 email: results[0].email,
                 client_name: results[0].client_name
             } : null;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+     terminate: async (id, htmlContent, updatedBy) => {
+        try {
+            // First get the current project data
+            const [rows] = await db.query(
+                "SELECT * FROM projects WHERE id = ?",
+                [id]
+            );
+
+            if (rows.length === 0) {
+                throw new Error("Project not found");
+            }
+
+            const project = rows[0];
+            
+            // Update project status to Completed
+            const query = "UPDATE projects SET status = 'Completed', end_date = NOW(), created_by = ? WHERE id = ?";
+            const [result] = await db.query(query, [updatedBy, id]);
+            
+            if (result.affectedRows === 0) {
+                throw new Error('Failed to terminate project');
+            }
+
+            // Get client email for notification
+           const clientInfo = await Project.getClientEmail(project.clients);
+            
+            if (clientInfo && clientInfo.email) {
+                // Send termination email
+                const emailOptions = {
+                    to: clientInfo.email,
+                    subject: `Project Completed: ${project.name}`,
+                    html: htmlContent
+                };
+                
+                await sendEmail(emailOptions);
+            }
+
+            return { success: true, message: 'Project terminated successfully' };
         } catch (error) {
             throw error;
         }
@@ -565,7 +613,7 @@ const Project = {
     },
 
 
-    
+
     sendProjectCreationEmail: async (projectId, clientId, projectName, startDate, endDate) => {
         try {
             const clientInfo = await Project.getClientEmail(clientId);

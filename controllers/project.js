@@ -54,3 +54,32 @@ exports.deleteProject = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.terminateProject = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { htmlContent, updatedBy } = req.body;
+
+        if (!id || !htmlContent || !updatedBy) {
+            return res.status(400).json({
+                success: false,
+                message: 'Project ID, HTML content, and updated by user are required'
+            });
+        }
+
+        // Use the static method directly (no need to instantiate)
+        const result = await Project.terminate(id, htmlContent, updatedBy);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Project terminated successfully',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error terminating project:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Internal server error'
+        });
+    }
+};

@@ -7,5 +7,6 @@ router.get('/:id',authMiddleware.authenticate, projectController.getProjectById)
 router.post('/', authMiddleware.authenticate,projectController.createProject);
 router.put('/:id',authMiddleware.authenticate, projectController.updateProject);
 router.delete('/:id',authMiddleware.authenticate, projectController.deleteProject);
+router.patch('/:id/terminate',authMiddleware.authenticate, projectController.terminateProject);
 
 module.exports = router;
