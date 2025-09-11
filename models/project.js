@@ -1,4 +1,5 @@
 const db = require('../dbConfig/db');
+const ExpectedDateLog = require("./ClinetOps/expectedDateLog")
 
 const Project = {
     getAll: async () => {
@@ -41,7 +42,7 @@ const Project = {
 
                 // Collect all UIDs we need to fetch (manager, lead, and members)
                 const uidsToFetch = [];
-                
+
                 if (project.team_manager_uid) {
                     uidsToFetch.push(project.team_manager_uid);
                 }
@@ -76,15 +77,15 @@ const Project = {
                 }, {});
 
                 // Extract members, manager, and lead
-                const teamMembers = project.team_member 
+                const teamMembers = project.team_member
                     ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
                     : [];
 
-                const teamManager = project.team_manager_uid 
+                const teamManager = project.team_manager_uid
                     ? profileMap[project.team_manager_uid]
                     : null;
 
-                const teamLead = project.team_lead_uid 
+                const teamLead = project.team_lead_uid
                     ? profileMap[project.team_lead_uid]
                     : null;
 
@@ -102,10 +103,10 @@ const Project = {
         }
     },
 
-getById: async (id) => {
-    try {
-        
-        const projectQuery = `
+    getById: async (id) => {
+        try {
+
+            const projectQuery = `
             SELECT 
                 p.*,
                 c.id AS client_id,
@@ -129,42 +130,42 @@ getById: async (id) => {
                 p.id = ?
         `;
 
-        const [projects] = await db.query(projectQuery, [id]);
+            const [projects] = await db.query(projectQuery, [id]);
 
-        if (projects.length === 0) {
-            return null; // No project found
-        }
+            if (projects.length === 0) {
+                return null; // No project found
+            }
 
-        const project = projects[0];
+            const project = projects[0];
 
-        if (!project.assigned_team) {
-            return {
-                ...project,
-                team_members: [],
-                team_manager: null,
-                team_lead: null
-            };
-        }
+            if (!project.assigned_team) {
+                return {
+                    ...project,
+                    team_members: [],
+                    team_manager: null,
+                    team_lead: null
+                };
+            }
 
-        // Collect all UIDs we need to fetch (manager, lead, and members)
-        const uidsToFetch = [];
-        
-        if (project.team_manager_uid) {
-            uidsToFetch.push(project.team_manager_uid);
-        }
-        if (project.team_lead_uid) {
-            uidsToFetch.push(project.team_lead_uid);
-        }
-        if (project.team_member) {
-            uidsToFetch.push(...project.team_member.split(','));
-        }
+            // Collect all UIDs we need to fetch (manager, lead, and members)
+            const uidsToFetch = [];
 
-        const uniqueUids = [...new Set(uidsToFetch)];
+            if (project.team_manager_uid) {
+                uidsToFetch.push(project.team_manager_uid);
+            }
+            if (project.team_lead_uid) {
+                uidsToFetch.push(project.team_lead_uid);
+            }
+            if (project.team_member) {
+                uidsToFetch.push(...project.team_member.split(','));
+            }
 
-        let profiles = [];
-        if (uniqueUids.length > 0) {
-            const placeholders = uniqueUids.map(() => '?').join(',');
-            const memberQuery = `
+            const uniqueUids = [...new Set(uidsToFetch)];
+
+            let profiles = [];
+            if (uniqueUids.length > 0) {
+                const placeholders = uniqueUids.map(() => '?').join(',');
+                const memberQuery = `
                 SELECT 
                     uid, username, firstname, lastname, profilepicurl,
                     role, designation, email, phonno, department
@@ -174,37 +175,37 @@ getById: async (id) => {
                     uid IN (${placeholders})
             `;
 
-            const [profileRows] = await db.query(memberQuery, uniqueUids);
-            profiles = profileRows;
+                const [profileRows] = await db.query(memberQuery, uniqueUids);
+                profiles = profileRows;
+            }
+
+            const profileMap = profiles.reduce((map, profile) => {
+                map[profile.uid] = profile;
+                return map;
+            }, {});
+
+            const teamMembers = project.team_member
+                ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
+                : [];
+
+            const teamManager = project.team_manager_uid
+                ? profileMap[project.team_manager_uid]
+                : null;
+
+            const teamLead = project.team_lead_uid
+                ? profileMap[project.team_lead_uid]
+                : null;
+
+            return {
+                ...project,
+                team_members: teamMembers,
+                team_manager: teamManager,
+                team_lead: teamLead
+            };
+        } catch (error) {
+            throw error;
         }
-
-        const profileMap = profiles.reduce((map, profile) => {
-            map[profile.uid] = profile;
-            return map;
-        }, {});
-
-        const teamMembers = project.team_member 
-            ? project.team_member.split(',').map(uid => profileMap[uid]).filter(Boolean)
-            : [];
-
-        const teamManager = project.team_manager_uid 
-            ? profileMap[project.team_manager_uid]
-            : null;
-
-        const teamLead = project.team_lead_uid 
-            ? profileMap[project.team_lead_uid]
-            : null;
-
-        return {
-            ...project,
-            team_members: teamMembers,
-            team_manager: teamManager,
-            team_lead: teamLead
-        };
-    } catch (error) {
-        throw error;
-    }
-},
+    },
 
 
     create: async (data) => {
@@ -237,6 +238,14 @@ getById: async (id) => {
 
         try {
             const [result] = await db.query(query, values);
+
+
+            await ExpectedDateLog.create({
+                expectedDate: data.expected_end_date,
+                projectId: result.insertId,
+                createdBy: data.created_by
+            });
+
             return { id: result.insertId, ...data };
         } catch (error) {
             throw error;
@@ -244,6 +253,36 @@ getById: async (id) => {
     },
 
     update: async (id, data) => {
+
+
+        const [rows] = await db.query(
+            "SELECT expected_end_date FROM projects WHERE id = ?",
+            [id]
+        );
+
+        if (rows.length === 0) {
+            throw new Error("Project not found");
+        }
+
+        const currentExpectedDate = rows[0].expected_end_date;
+        const [expectedRows] = await db.query(
+            "SELECT expectedDate FROM expectedDate WHERE projectId =?",
+            [id]
+        );
+        if (expectedRows.length === 0) {
+            throw new Error("Project not found");
+        }
+        ExpectedDate = expectedRows[0].expectedDate;
+
+        if ( data.expected_end_date != ExpectedDate) {
+            await ExpectedDateLog.update({
+                projectId: id,
+                expectedDate: currentExpectedDate,
+                createdBy: data.created_by,
+            });
+        }
+
+
         const query = `
             UPDATE projects SET 
                 urls = ?, name = ?, start_date = ?, expected_end_date = ?, 
