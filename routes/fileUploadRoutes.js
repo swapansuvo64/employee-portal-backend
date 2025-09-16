@@ -4,7 +4,7 @@ const { FileUploadController } = require('../controllers/fileUploadController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/upload',  
- authMiddleware.authenticate,
+
   (req, res, next) => {
     if (!req.is('multipart/form-data')) {
       return res.status(400).json({
