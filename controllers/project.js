@@ -58,9 +58,9 @@ exports.deleteProject = async (req, res, next) => {
 exports.terminateProject = async (req, res) => {
     try {
         const { id } = req.params;
-        const { htmlContent, updatedBy } = req.body;
+        const { htmlContent, updatedBy , withEmail } = req.body;
 
-        if (!id || !htmlContent || !updatedBy) {
+        if (!id || !htmlContent || !updatedBy || withEmail === undefined ) {
             return res.status(400).json({
                 success: false,
                 message: 'Project ID, HTML content, and updated by user are required'
@@ -68,7 +68,8 @@ exports.terminateProject = async (req, res) => {
         }
 
         // Use the static method directly (no need to instantiate)
-        const result = await Project.terminate(id, htmlContent, updatedBy);
+        const result = await Project.terminate(id, htmlContent, updatedBy, withEmail);
+
         
         res.status(200).json({
             success: true,

@@ -411,7 +411,7 @@ const Project = {
         }
     },
 
-     terminate: async (id, htmlContent, updatedBy) => {
+     terminate: async (id, htmlContent, updatedBy,withEmail) => {
         try {
             // First get the current project data
             const [rows] = await db.query(
@@ -426,14 +426,15 @@ const Project = {
             const project = rows[0];
             
             // Update project status to Completed
-            const query = "UPDATE projects SET status = 'Terminated', end_date = NOW(), created_by = ? WHERE id = ?";
+            const query = "UPDATE projects SET status = 'Terminate', end_date = NOW(), created_by = ? WHERE id = ?";
             const [result] = await db.query(query, [updatedBy, id]);
             
             if (result.affectedRows === 0) {
                 throw new Error('Failed to terminate project');
             }
 
-            // Get client email for notification
+            if(withEmail){
+                 
            const clientInfo = await Project.getClientEmail(project.clients);
             
             if (clientInfo && clientInfo.email) {
@@ -446,6 +447,10 @@ const Project = {
                 
                 await sendEmail(emailOptions);
             }
+
+            }
+
+           
 
             return { success: true, message: 'Project terminated successfully' };
         } catch (error) {
