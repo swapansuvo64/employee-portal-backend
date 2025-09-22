@@ -426,7 +426,7 @@ const Project = {
             const project = rows[0];
             
             // Update project status to Completed
-            const query = "UPDATE projects SET status = 'Completed', end_date = NOW(), created_by = ? WHERE id = ?";
+            const query = "UPDATE projects SET status = 'Terminated', end_date = NOW(), created_by = ? WHERE id = ?";
             const [result] = await db.query(query, [updatedBy, id]);
             
             if (result.affectedRows === 0) {
