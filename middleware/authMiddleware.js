@@ -12,6 +12,7 @@ const authMiddleware = {
       }
 
       const token = authHeader.split(' ')[1];
+      console.log(token)
       
       // Verify JWT signature and expiration
       const decoded = User.verifyJWT(token);

@@ -411,52 +411,78 @@ const Project = {
         }
     },
 
-     terminate: async (id, htmlContent, updatedBy,withEmail) => {
-        try {
-            // First get the current project data
-            const [rows] = await db.query(
-                "SELECT * FROM projects WHERE id = ?",
-                [id]
-            );
-
-            if (rows.length === 0) {
-                throw new Error("Project not found");
-            }
-
-            const project = rows[0];
-            
-            // Update project status to Completed
-            const query = "UPDATE projects SET status = 'Terminate', end_date = NOW(), created_by = ? WHERE id = ?";
-            const [result] = await db.query(query, [updatedBy, id]);
-            
-            if (result.affectedRows === 0) {
-                throw new Error('Failed to terminate project');
-            }
-
-            if(withEmail){
-                 
-           const clientInfo = await Project.getClientEmail(project.clients);
-            
-            if (clientInfo && clientInfo.email) {
-                // Send termination email
-                const emailOptions = {
-                    to: clientInfo.email,
-                    subject: `Project Completed: ${project.name}`,
-                    html: htmlContent
-                };
-                
-                await sendEmail(emailOptions);
-            }
-
-            }
-
-           
-
-            return { success: true, message: 'Project terminated successfully' };
-        } catch (error) {
-            throw error;
+terminate: async (id, htmlContent, updatedBy, withEmail) => {
+    try {
+        console.log('Model terminate called:', { id, withEmail, hasHtmlContent: !!htmlContent, updatedBy });
+        
+        // First get the current project data
+        const [rows] = await db.query(
+            "SELECT * FROM projects WHERE id = ?",
+            [id]
+        );
+        console.log(htmlContent)
+        if (rows.length === 0) {
+            throw new Error("Project not found");
         }
-    },
+        
+        const project = rows[0];
+        console.log('Project found:', { id: project.id, name: project.name, status: project.status });
+        
+        // Update project status to Terminate
+        const query = "UPDATE projects SET status = 'Terminate', end_date = NOW(), created_by = ? WHERE id = ?";
+        const [result] = await db.query(query, [updatedBy, id]);
+        
+        if (result.affectedRows === 0) {
+            throw new Error('Failed to terminate project - no rows affected');
+        }
+        
+        console.log('Project status updated successfully');
+        
+        // Only send email if withEmail is true and we have content
+        if (withEmail) {
+            if (!htmlContent || htmlContent.trim() === '') {
+                console.warn('withEmail is true but no HTML content provided, skipping email');
+            } else {
+                try {
+                    // Get client email
+                    const clientInfo = await Project.getClientEmail(project.clients);
+                    
+                    if (clientInfo && clientInfo.email) {
+                        console.log('Sending termination email to:', clientInfo.email);
+                        
+                        // Send termination email
+                        const emailOptions = {
+                            to: clientInfo.email,
+                            subject: `Project Completed: ${project.name}`,
+                            html: htmlContent
+                        };
+                        
+                        await sendEmail(emailOptions);
+                        console.log('Termination email sent successfully');
+                    } else {
+                        console.warn('Client email not found, skipping email send');
+                    }
+                } catch (emailError) {
+                    console.error('Error sending termination email:', emailError);
+                    // Don't throw here - project is already terminated
+                    // Just log the error and continue
+                }
+            }
+        } else {
+            console.log('Email sending disabled (withEmail = false)');
+        }
+        
+        return { 
+            success: true, 
+            message: withEmail ? 'Project terminated and email sent successfully' : 'Project terminated successfully',
+            projectId: id,
+            withEmail: withEmail
+        };
+    } catch (error) {
+        console.error('Error in terminate method:', error);
+        throw error;
+    }
+},
 
     sendProgressEmail: async (projectId, progressedMilestones, clientInfo, projectName, deadline) => {
         try {

@@ -4,8 +4,8 @@ const pool = require('../dbConfig/db');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-very-secure-secret-key-123';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ;
 const SALT_ROUNDS = 10;
 
 class User {
@@ -31,10 +31,10 @@ class User {
     const firstLetter = name.charAt(0).toUpperCase();
     const date = new Date(createdAt);
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); 
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateStr = `${day}${month}${year}`;
-    
+
     return `${firstLetter}${dateStr}${id}`;
   }
 
@@ -131,7 +131,7 @@ class User {
       console.error('Hash is undefined or null');
       return false;
     }
-    
+
     try {
       console.log('Comparing password with hash');
       return await bcrypt.compare(password, hash);
@@ -145,13 +145,21 @@ class User {
     return jwt.sign({ id: userId, role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   }
 
-  static verifyJWT(token) {
-    try {
-      return jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      return null;
-    }
+static verifyJWT(token) {
+  try {
+    console.log('🔐 Verifying token:', token);
+    console.log('🔑 Using secret:', JWT_SECRET ? 'Secret exists' : 'Secret is missing');
+    console.log('📏 Token length:', token?.length);
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('✅ Token verified successfully:', decoded);
+    return decoded;
+  } catch (error) {
+    console.error('❌ JWT verification failed:', error.message);
+    console.error('🔍 Error details:', error);
+    return null;
   }
+}
 
   static async storeToken(userId, token, platform) {
     const column = platform === 'client' ? 'clientToken' : 'employeeToken';
@@ -185,14 +193,24 @@ class User {
     );
   }
 
-  static async findUserByToken(token) {
-    // Check both token columns
+static async findUserByToken(token) {
+  try {
+    // Trim and clean the token
+    const cleanToken = token.trim();
+    
     const [rows] = await authPool.execute(
       'SELECT * FROM User WHERE employeeToken = ? OR clientToken = ?',
-      [token, token]
+      [cleanToken, cleanToken]
     );
-    return rows[0];
+    
+    console.log('🔍 Token search results:', rows.length, 'found'); // Debug
+    
+    return rows[0] || null;
+  } catch (error) {
+    console.error('Error in findUserByToken:', error);
+    return null;
   }
+}
 }
 
 // Initialize table on startup

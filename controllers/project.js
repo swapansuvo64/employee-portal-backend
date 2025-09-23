@@ -58,22 +58,32 @@ exports.deleteProject = async (req, res, next) => {
 exports.terminateProject = async (req, res) => {
     try {
         const { id } = req.params;
-        const { htmlContent, updatedBy , withEmail } = req.body;
-
-        if (!id || !htmlContent || !updatedBy || withEmail === undefined ) {
+        const { htmlContent, updatedBy, withEmail } = req.body;
+        
+        console.log('Terminate request:', { id, withEmail, hasHtmlContent: !!htmlContent, updatedBy });
+        
+        // Validate required fields
+        if (!id || !updatedBy || withEmail === undefined) {
             return res.status(400).json({
                 success: false,
-                message: 'Project ID, HTML content, and updated by user are required'
+                message: 'Project ID, updated by user, and withEmail flag are required'
             });
         }
 
-        // Use the static method directly (no need to instantiate)
-        const result = await Project.terminate(id, htmlContent, updatedBy, withEmail);
-
+        // If withEmail is true, validate that we have HTML content
+        if (withEmail && (!htmlContent || htmlContent.trim() === '')) {
+            return res.status(400).json({
+                success: false,
+                message: 'HTML content is required when sending email'
+            });
+        }
+        
+        // Use the static method directly
+        const result = await Project.terminate(id, htmlContent || '', updatedBy, withEmail);
         
         res.status(200).json({
             success: true,
-            message: 'Project terminated successfully',
+            message: withEmail ? 'Project terminated and email sent successfully' : 'Project terminated successfully',
             data: result
         });
     } catch (error) {
