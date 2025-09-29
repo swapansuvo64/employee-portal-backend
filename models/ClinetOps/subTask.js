@@ -40,14 +40,50 @@ class SubTask {
     return { id: result.insertId, ...subTaskData, subtaskIndex };
   }
 
-  static async update(id, subTaskData) {
-    const { ProjectId, projectstageIndex, Task, createdBy, IsCompleted } = subTaskData;
-    await pool.query(
-      "UPDATE subTask SET ProjectId = ?, projectstageIndex = ?, Task = ?, createdBy = ?, IsCompleted = ? WHERE id = ?",
-      [ProjectId, projectstageIndex, Task, createdBy, IsCompleted, id]
-    );
-    return { id, ...subTaskData };
-  }
+static async update(id, subTaskData) {
+    try {
+        console.log("=== SUBTASK MODEL UPDATE ===");
+        console.log("Model received - ID:", id, "Type:", typeof id);
+        console.log("Model received - Data:", subTaskData);
+        
+        const { ProjectId, projectstageIndex, Task, createdBy, IsCompleted, machineUsed, deadline, notes } = subTaskData;
+        
+        console.log("Extracted fields:", {
+            ProjectId, projectstageIndex, Task, createdBy, IsCompleted, machineUsed, deadline, notes
+        });
+
+        // Validate all required fields
+        if (!ProjectId || projectstageIndex===null || !Task || !createdBy) {
+            const error = new Error('Missing required fields in model');
+            console.error('Model validation error:', error.message);
+            throw error;
+        }
+
+        console.log("Executing SQL query...");
+        
+        const [result] = await pool.query(
+            "UPDATE subTask SET ProjectId = ?, projectstageIndex = ?, Task = ?, createdBy = ?, IsCompleted = ?, machineUsed = ?, deadline = ?, notes = ? WHERE id = ?",
+            [ProjectId, projectstageIndex, Task, createdBy, IsCompleted, machineUsed, deadline, notes, id]
+        );
+
+        console.log("SQL query executed successfully");
+        console.log("Update result:", result);
+        console.log("Affected rows:", result.affectedRows);
+
+        if (result.affectedRows === 0) {
+            const error = new Error('No subtask found with the given ID');
+            console.error('No rows affected:', error.message);
+            throw error;
+        }
+
+        console.log("Returning updated data...");
+        return { id: parseInt(id), ...subTaskData };
+    } catch (error) {
+        console.error('Error in SubTask.update model:', error);
+        console.error('Error stack in model:', error.stack);
+        throw error;
+    }
+}
 
   static async delete(id) {
     await pool.query("DELETE FROM subTask WHERE id = ?", [id]);

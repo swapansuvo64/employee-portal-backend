@@ -63,27 +63,56 @@ const subTaskController = {
   },
 
   // Update a subTask
-  updateSubTask: async (req, res) => {
+updateSubTask: async (req, res) => {
     try {
-      const { ProjectId, projectstageIndex, Task, createdBy, IsCompleted } = req.body;
+      const { ProjectId, projectstageIndex, Task, createdBy, IsCompleted, machineUsed, deadline, notes } = req.body;
+      const subTaskId = req.params.id;
       
-      if (!ProjectId || !projectstageIndex || !Task || !createdBy) {
+      console.log('=== UPDATE SUBTASK CONTROLLER ===');
+      console.log('Request body:', req.body);
+      console.log('SubTask ID from params:', subTaskId);
+      console.log('All params:', req.params);
+      
+      if (!ProjectId || projectstageIndex===null || !Task || !createdBy) {
+        console.log('Missing required fields validation failed');
         return res.status(400).json({ 
           success: false, 
           message: "ProjectId, projectstageIndex, Task, and createdBy are required" 
         });
       }
 
-      const updatedSubTask = await SubTask.update(req.params.id, {
+      // Validate that subTaskId exists and is a number
+      if (!subTaskId || isNaN(subTaskId)) {
+        console.log('Invalid subTask ID validation failed');
+        return res.status(400).json({
+          success: false,
+          message: "Valid subTask ID is required"
+        });
+      }
+
+      console.log('All validations passed, calling SubTask.update...');
+
+      // Create the data object with all fields, including optional ones
+      const updateData = {
         ProjectId,
         projectstageIndex,
         Task,
         createdBy,
-        IsCompleted
-      });
+        IsCompleted: IsCompleted || 0,
+        machineUsed: machineUsed || null,
+        deadline: deadline || null,
+        notes: notes || null
+      };
+
+      console.log('Data being passed to model:', updateData);
+
+      const updatedSubTask = await SubTask.update(subTaskId, updateData);
       
+      console.log('Update successful, returning response');
       res.json({ success: true, data: updatedSubTask });
     } catch (error) {
+      console.error('Error in updateSubTask controller:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({ success: false, message: error.message });
     }
   },

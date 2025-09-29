@@ -19,6 +19,7 @@ const file =require('./routes/ClientOps/filesRoutes')
 const CommunicationLog=require('./routes/ClientOps/communicationLogRoutes')
 const SubTaskRoutes = require('./routes/ClientOps/subTaskRoutes');
 const EmailRoutes = require('./routes/EmailRoutes');
+const jobPlannerRoutes = require('./routes/ClientOps/jobPlanner');
 const app = express();
 
 // Middleware
@@ -53,6 +54,7 @@ app.use('/api/file',file)
 app.use('/api/CommunicationLog',CommunicationLog)
 app.use('/api/subtasks', SubTaskRoutes);
 app.use('/api/emails', EmailRoutes);
+app.use('/api/jobProjects', jobPlannerRoutes);
 
 
 app.get('/health', async (req, res) => {
